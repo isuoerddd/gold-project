@@ -1,138 +1,101 @@
 import streamlit as st
 import streamlit.components.v1 as components
-from datetime import datetime
 
-# إعدادات الواجهة الاحترافية (Dark Mode & Gold Theme)
-st.set_page_config(page_title="Elite Gold Signals", layout="wide")
+# إعدادات الواجهة
+st.set_page_config(page_title="Gold AI Robot", layout="wide")
 
 st.markdown("""
     <style>
-    .main { background-color: #05070a; color: white; }
-    .stApp { background-color: #05070a; }
-    .signal-card {
-        background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+    .main { background-color: #040609; color: white; }
+    .stApp { background-color: #040609; }
+    .bot-card {
+        background: linear-gradient(145deg, #0f1218, #1a1e26);
         border: 2px solid #FFD700;
-        padding: 30px;
-        border-radius: 20px;
+        padding: 25px;
+        border-radius: 25px;
         text-align: center;
-        margin-bottom: 20px;
+        box-shadow: 0px 0px 20px rgba(255, 215, 0, 0.3);
     }
-    .target-box {
-        background-color: #1c2128;
-        border-right: 4px solid #00ff00;
-        padding: 10px;
-        margin: 10px 0;
-        text-align: right;
-        direction: rtl;
-    }
-    .header-title {
-        font-size: 40px;
-        font-weight: bold;
-        color: #FFD700;
-        text-shadow: 0px 0px 15px rgba(255, 215, 0, 0.5);
-        text-align: center;
+    .status-box {
+        background-color: #000;
+        border-radius: 10px;
+        padding: 15px;
+        margin-top: 15px;
+        border: 1px solid #333;
     }
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown('<p class="header-title">🔱 نظام النخبة لقنص الذهب 🔱</p>', unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #8b8b8b;'>تحليل ذكاء اصطناعي يعتمد على تدفق السيولة ومناطق SNR التاريخية</p>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; color: #FFD700;'>🤖 روبوت قناص الذهب الذكي </h1>", unsafe_allow_html=True)
 
-# --- القسم الأول: اختيار الفريم (الذكاء في التوقيت) ---
+# --- لوحة التحكم الجانبية ---
 with st.sidebar:
-    st.markdown("### 🛠️ مركز التحكم")
-    frame = st.selectbox("اختر فريم التحليل (يفضل 1H للصفقات القوية):", 
-                         ["15", "60", "240", "D"], index=1)
-    st.markdown("---")
-    st.markdown("#### 💎 جودة الإشارة الحالية")
-    st.progress(85) # محاكاة لقوة الإشارة بناءً على السيولة
-    st.write("نسبة النجاح المتوقعة: **88%**")
+    st.image("https://cdn-icons-png.flaticon.com/512/4712/4712035.png", width=100)
+    st.title("إعدادات الروبوت")
+    frame = st.selectbox("اختر فريم المسح الذكي:", ["5", "15", "60", "240"], index=1)
+    st.write("---")
+    st.info("الروبوت يقوم بتحديث البيانات تلقائياً من البورصة كل ثانية.")
 
-# --- القسم الثاني: عرض الصفقة "الذهبية" لهذا اليوم ---
-col_sig, col_chart = st.columns([1, 2])
+# --- القسم الرئيسي: الروبوت ---
+col_bot, col_chart = st.columns([1, 2])
 
-with col_sig:
-    st.markdown('<div class="signal-card">', unsafe_allow_html=True)
-    st.markdown("<h2 style='color: #FFD700;'>🎯 صفقة اليوم المختارة</h2>", unsafe_allow_html=True)
+with col_bot:
+    st.markdown('<div class="bot-card">', unsafe_allow_html=True)
+    st.markdown("### ⚡ معالج البيانات الذكي")
     
-    # محاكاة توصية ذكية بناءً على فريم الساعة
-    st.markdown("### XAUUSD / الذهب")
-    st.markdown("<p style='font-size: 20px;'>النوع: <span style='color: #00ff00;'>شراء (BUY)</span></p>", unsafe_allow_html=True)
+    # ويدجت التحليل التقني اللحظي (هو قلب الروبوت)
+    analysis_html = f"""
+    <div style="height: 380px;">
+    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js" async>
+    {{
+      "interval": "{'5m' if frame=='5' else '15m' if frame=='15' else '1h' if frame=='60' else '4h'}",
+      "width": "100%", "isTransparent": true, "height": "100%",
+      "symbol": "FX:XAUUSD", "showIntervalTabs": false, "displayMode": "single",
+      "locale": "ar", "colorTheme": "dark"
+    }}
+    </script></div>"""
+    components.html(analysis_html, height=400)
     
-    st.markdown('<div class="target-box">📍 نقطة الدخول: انتظار كسر منطقة RBS القريبة</div>', unsafe_allow_html=True)
-    st.markdown('<div class="target-box">🏁 الهدف الأول: سيولة القمة (Equil Highs)</div>', unsafe_allow_html=True)
-    st.markdown('<div class="target-box">🛑 وقف الخسارة: أسفل منطقة الطلب الحالية</div>', unsafe_allow_html=True)
+    if st.button("🚀 تحديث إشارة القناص"):
+        st.toast("جاري سحب السيولة الحالية...")
+        st.balloons()
     
-    st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("تحديث تحليل الذكاء الاصطناعي"):
-        st.toast("جاري تحديث تدفق السيولة (Order Flow)...")
+    st.markdown('<div class="status-box">', unsafe_allow_html=True)
+    st.write("🎯 **التوصية اللحظية:**")
+    st.write("راقب إشارة (Strong Buy/Sell) في المعالج أعلاه للدخول.")
+    st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 with col_chart:
-    # شارت احترافي يحتوي على مؤشرات السيولة آلياً
-    st.subheader("🔍 التحليل الفني المباشر")
-    chart_code = f"""
-    <div class="tradingview-widget-container" style="height:500px;">
-      <div id="tv_elite"></div>
+    st.subheader("📡 البث المباشر للأسعار والسيولة")
+    # شارت احترافي يتحدث لحظياً
+    chart_html = f"""
+    <div class="tradingview-widget-container" style="height:530px;">
+      <div id="tv_robot"></div>
       <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
       <script type="text/javascript">
       new TradingView.widget({{
-        "autosize": true,
-        "symbol": "OANDA:XAUUSD",
-        "interval": "{frame}",
-        "timezone": "Etc/UTC",
-        "theme": "dark",
-        "style": "1",
-        "locale": "ar",
-        "enable_publishing": false,
-        "withdateranges": true,
-        "hide_side_toolbar": false,
-        "allow_symbol_change": true,
-        "details": true,
-        "hotlist": true,
-        "container_id": "tv_elite"
+        "autosize": true, "symbol": "FX:XAUUSD", "interval": "{frame}",
+        "timezone": "Etc/UTC", "theme": "dark", "style": "1", "locale": "ar",
+        "withdateranges": true, "hide_side_toolbar": false, "allow_symbol_change": true,
+        "details": true, "hotlist": true, "container_id": "tv_robot"
       }});
       </script>
     </div>
     """
-    components.html(chart_code, height=520)
+    components.html(chart_html, height=550)
 
-# --- القسم الثالث: عداد الترند وسحب السيولة ---
+# --- حاسبة إدارة المخاطر (لإكمال عمل الروبوت) ---
 st.markdown("---")
-st.subheader("📡 رادار النبض اللحظي")
-col1, col2, col3 = st.columns(3)
+st.subheader("🧮 حاسبة إدارة مخاطر القناص")
+c1, c2, c3 = st.columns(3)
+with c1:
+    balance = st.number_input("حجم المحفظة ($):", value=1000)
+with c2:
+    risk = st.slider("نسبة المخاطرة (%):", 1, 5, 1)
+with c3:
+    stop_loss = st.number_input("عدد نقاط الستوب (Pips):", value=30)
 
-with col1:
-    # ويدجت قوة الترند
-    gauge_html = f"""
-    <div style="height: 300px;">
-    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js" async>
-    {{
-      "interval": "{'1h' if frame=='60' else '15m' if frame=='15' else '4h'}",
-      "width": "100%", "isTransparent": true, "height": "100%",
-      "symbol": "OANDA:XAUUSD", "showIntervalTabs": false, "displayMode": "single",
-      "locale": "ar", "colorTheme": "dark"
-    }}
-    </script></div>"""
-    components.html(gauge_html, height=320)
-
-with col2:
-    st.markdown("""
-    <div style='background-color: #11141a; padding: 20px; border-radius: 10px; height: 300px;'>
-        <h4 style='color: #FFD700;'>💡 لماذا هذه الصفقة؟</h4>
-        <ul style='direction: rtl;'>
-            <li>تم رصد سحب سيولة (Liquidity Sweep) عند القاع الأخير.</li>
-            <li>السعر يرتكز الآن على منطقة دعم (RBS) قوية جداً.</li>
-            <li>مؤشر القوة النسبية يعطي تشبعاً بيعياً مع دايفيرجنس شرائي.</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col3:
-    # ويدجت الأخبار المؤثرة
-    news_html = """
-    <div style="height: 300px;">
-    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-events.js" async>
-    {"colorTheme": "dark", "isTransparent": true, "width": "100%", "height": "100%", "locale": "ar", "importanceFilter": "1", "currencyFilter": "USD"}
-    </script></div>"""
-    components.html(news_html, height=320)
+risk_amount = balance * (risk/100)
+lot_size = risk_amount / (stop_loss * 10) # معادلة تقريبية للذهب
+st.warning(f"🛡️ لتقليل المخاطرة، ادخل بلوت حجمه: **{lot_size:.2f}**")
