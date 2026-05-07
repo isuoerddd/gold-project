@@ -1,69 +1,44 @@
-import streamlit as st
+import requests
+import time
+import string
+import random
 
-# إعدادات الصفحة
-st.set_page_config(page_title="محرر التقارير الذكي", layout="centered")
+# إعدادات الصيد
+CHECK_LIMIT = 50  # عدد اليوزرات التي سيفحصها في كل مرة يعمل فيها السكربت
+CHAR_COUNT = 4    # طول اليوزر (4 حروف)
 
-# تصميم الواجهة (فخامة وبساطة)
-st.markdown("""
-    <style>
-    .stApp { background-color: #f8f9fa; }
-    .report-container {
-        background-color: white;
-        padding: 30px;
-        border-radius: 15px;
-        box-shadow: 0px 4px 20px rgba(0,0,0,0.05);
-        direction: rtl;
-        text-align: right;
-    }
-    h1, h2, h3 { color: #1e3a8a; font-family: 'Arial'; }
-    </style>
-    """, unsafe_allow_html=True)
+def generate_username(length):
+    # توليد يوزر عشوائي من حروف وأرقام
+    chars = string.ascii_lowercase + string.digits
+    return ''.join(random.choice(chars) for _ in range(length))
 
-st.markdown("<h1 style='text-align: center;'>📄 نظام توليد التقارير الجامعية</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #666;'>ادخل اسم الموضوع واترك الباقي للمهندس الذكي</p>", unsafe_allow_html=True)
-
-# مدخلات المستخدم
-with st.container():
-    st.markdown('<div class="report-container">', unsafe_allow_html=True)
-    topic = st.text_input("عنوان التقرير أو الموضوع:", placeholder="مثلاً: هندسة المكامن، التسويق الرقمي، القضاء العشائري...")
-    subject_type = st.selectbox("نوع المادة:", ["هندسة", "قانون", "إدارة أعمال", "ثقافة عامة"])
+def check_github_user(username):
+    url = f"https://api.github.com/users/{username}"
+    response = requests.get(url)
     
-    generate_btn = st.button("🚀 توليد التقرير الآن")
-    st.markdown('</div>', unsafe_allow_html=True)
+    if response.status_code == 404:
+        return True  # اليوزر متاح!
+    return False     # اليوزر محجوز
 
-if generate_btn and topic:
-    with st.spinner("جاري صياغة التقرير باللغة العربية الفصحى..."):
-        # هنا يتم بناء هيكل التقرير
-        # ملاحظة: يمكنك ربط هذا الجزء بـ API للذكاء الاصطناعي لاحقاً ليكون المحتوى متجدداً
-        report_content = f"""
-        # تقرير عن: {topic}
-        
-        ## المقدمة
-        يعد موضوع {topic} من المواضيع الجوهرية في مجال {subject_type}، حيث يلعب دوراً حيوياً في فهم التطورات الحديثة...
-        
-        ## المحاور الرئيسية
-        1. **الأهمية التاريخية والتقنية:** تطور مفهوم {topic} عبر العصور ليصل إلى ما هو عليه الآن.
-        2. **التطبيقات العملية:** يتم استخدام {topic} في العديد من المجالات المهنية والأكاديمية.
-        3. **التحديات والحلول:** واجه هذا المجال عدة معوقات تم تجاوزها من خلال البحث والتطوير.
-        
-        ## الخاتمة
-        بناءً على ما سبق، نستنتج أن {topic} سيظل حجر الزاوية في الدراسات المستقبلية لمادة {subject_type}.
-        
-        ---
-        **المراجع:**
-        - ويكيبيديا العربية.
-        - مصادر أكاديمية متخصصة في {subject_type}.
-        """
-        
-        st.markdown("---")
-        st.markdown(report_content)
-        
-        # خيارات التصدير
-        col1, col2 = st.columns(2)
-        with col1:
-            st.download_button("📥 تحميل كملف نصي (TXT)", report_content, file_name=f"{topic}.txt")
-        with col2:
-            st.info("💡 يمكنك نسخ النص ولصقه مباشرة في ملف Word وتنسيقه.")
+def start_hunting():
+    print(f"🚀 بدء عملية البحث عن يوزرات متاحة بطول {CHAR_COUNT} حروف...")
+    found_users = []
+    
+    for _ in range(CHECK_LIMIT):
+        user = generate_username(CHAR_COUNT)
+        if check_github_user(user):
+            print(f"✅ متاح: {user}")
+            found_users.append(user)
+        else:
+            print(f"❌ محجوز: {user}")
+        time.sleep(0.5)  # لتجنب الحظر من API جيت هاب
+    
+    if found_users:
+        print("\n🏆 القائمة المكتشفة:")
+        for u in found_users:
+            with open("available_users.txt", "a") as f:
+                f.write(u + "\n")
+            print(f"- {u}")
 
-else:
-    st.info("بانتظار إدخال الموضوع لبدء العمل...")
+if __name__ == "__main__":
+    start_hunting()
