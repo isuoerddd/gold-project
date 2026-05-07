@@ -18,6 +18,7 @@ st.markdown("""
         background-color: #11141a; border: 2px solid #FFD700;
         padding: 25px; border-radius: 20px; margin-top: 20px;
         color: #e0e0e0; line-height: 1.8; font-size: 17px;
+        direction: rtl; text-align: right;
     }
     .stFileUploader { background-color: #11141a; border-radius: 12px; border: 1px dashed #FFD700; }
     </style>
@@ -28,13 +29,13 @@ st.markdown('<div class="header-text">🔱 قناص الذهب بالذكاء ا
 # --- إعداد مفتاح الـ API الخاص بك ---
 GOOGLE_API_KEY = "AIzaSyDq4XiDDuRLitWDClLCLlgh1sfu2Gj9ITw" 
 
-# تهيئة موديل Gemini
+# تهيئة موديل Gemini (تم التعديل لضمان التوافق)
 try:
     genai.configure(api_key=GOOGLE_API_KEY)
-    # استخدام الإصدار الأحدث القادر على تحليل الصور
-    model = genai.GenerativeModel('gemini-1.5-flash') 
+    # التسمية الكاملة والمستقرة للموديل
+    model = genai.GenerativeModel('models/gemini-1.5-flash-latest') 
 except Exception as e:
-    st.error("فشل الاتصال بمحرك الذكاء الاصطناعي. تأكد من صحة المفتاح.")
+    st.error("فشل الاتصال بمحرك الذكاء الاصطناعي.")
 
 # --- منطقة رفع الشارت ---
 st.write("---")
@@ -42,15 +43,13 @@ st.markdown("### 📸 ارفع سكرين شوت لشارت الذهب (TradingV
 uploaded_file = st.file_uploader("اختر صورة للشارت لتحليلها فوريًا...", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
-    # عرض الصورة للزائر
     image = Image.open(uploaded_file)
-    st.image(image, caption='الشارت الذي سيتم تحليله', use_column_width=True)
+    st.image(image, caption='الشارت المرفوع', use_column_width=True)
     
-    # زر البدء بالتحليل
     if st.button("🚀 ابدأ تحليل القناص الآن"):
-        with st.spinner('⏳ جاري مسح الشارت واستخراج السيولة ومناطق SNR...'):
+        with st.spinner('⏳ جاري تحليل السيولة ومناطق SNR...'):
             try:
-                # الـ Prompt الاحترافي الموجه للمدرسة الماليزية والسيولة
+                # البرومبت الاحترافي لتحليل SNR والسيولة والجابات
                 prompt = """
                 أنت الآن محلل فني خبير متخصص في الذهب (XAUUSD) بمدرستي SNR الماليزية والسيولة (Liquidity).
                 قم بفحص الصورة المرفوعة بدقة واستخرج منها التحليل التالي:
@@ -66,22 +65,18 @@ if uploaded_file is not None:
                 - الهدف (Take Profit) ووقف الخسارة (Stop Loss).
                 - تقييم قوة الصفقة (مثلاً: 8/10).
                 - نصيحة فنية بناءً على حركة الشموع الظاهرة.
-                
-                إذا كانت الصورة غير واضحة أو لا توجد فرصة، قل ذلك بوضوح.
                 """
                 
-                # إرسال الصورة للموديل
                 response = model.generate_content([prompt, image])
                 
-                # عرض النتيجة
                 st.markdown("---")
                 st.markdown("### 🎯 تقرير القناص الذكي")
                 st.markdown(f'<div class="report-box">{response.text}</div>', unsafe_allow_html=True)
                 st.balloons()
                 
             except Exception as e:
-                st.error(f"حدث خطأ أثناء معالجة الصورة: {str(e)}")
+                st.error(f"حدث خطأ: {str(e)}")
 else:
-    st.info("💡 نصيحة: ارفع صورة واضحة للشارت (يفضل فريم 15 دقيقة أو ساعة) لضمان دقة تحديد مناطق الدخول.")
+    st.info("💡 نصيحة: ارفع صورة واضحة للشارت لضمان دقة تحديد مناطق الدخول.")
 
 st.markdown("<br><hr><center><p style='color: #555;'>نظام تحليل الذهب الموحد - 2026</p></center>", unsafe_allow_html=True)
