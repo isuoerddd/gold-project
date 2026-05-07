@@ -1,121 +1,333 @@
-import streamlit as st
-from datetime import datetime
-from XAUSD_AI import XAUUSDTradingBot
+# ================================
+# PROFESSIONAL XAUUSD AI BOT
+# SINGLE FILE VERSION
+# ================================
+
+# INSTALL:
+# pip install MetaTrader5 pandas numpy ta scikit-learn python-telegram-bot
+
+import MetaTrader5 as mt5
+import pandas as pd
+import numpy as np
+import ta
 import time
+from sklearn.ensemble import RandomForestClassifier
+from telegram import Bot
 
-# Must be the first Streamlit command
-st.set_page_config(page_title="XAUUSD Trading Bot", page_icon="📈", layout="wide")
+# ==========================================
+# CONFIG
+# ==========================================
 
-# Initialize trading bot with API key from secrets
-bot = XAUUSDTradingBot(api_key=st.secrets["GROQ_API_KEY"])
+SYMBOL = "XAUUSD"
+LOT = 0.01
+TIMEFRAME = mt5.TIMEFRAME_M15
+BARS = 500
 
-def display_market_data(data_str, timeframe):
-    """Display formatted market data in an expander"""
-    with st.expander(f"📊 {timeframe} Market Data", expanded=False):
-        lines = data_str.split('\n')
-        for line in lines:
-            if line.strip():
-                st.text(line)
+TELEGRAM_TOKEN = "PUT_YOUR_TOKEN"
+CHAT_ID = "PUT_YOUR_CHAT_ID"
 
-def format_signal(signal_content):
-    """Format and display trading signal content"""
-    if isinstance(signal_content, str):
-        return signal_content
-    return signal_content.content if hasattr(signal_content, 'content') else str(signal_content)
+bot = Bot(token=TELEGRAM_TOKEN)
 
-def main():
-    # Custom CSS
-    st.markdown("""
-        <style>
-        .stApp {background-color: #0e1117}
-        .metric-container {
-            background-color: #1f2937;
-            padding: 10px;
-            border-radius: 5px;
-            margin: 5px;
-        }
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 2px;
-            background-color: #1f2937;
-        }
-        .stTabs [data-baseweb="tab"] {
-            background-color: #374151;
-            padding: 10px 20px;
-            border-radius: 5px 5px 0 0;
-        }
-        </style>
-    """, unsafe_allow_html=True)
+# ==========================================
+# CONNECT MT5
+# ==========================================
 
-    # Header
-    st.title("🤖 XAUUSD Trading Bot Dashboard")
-    
-    # Sidebar controls
-    with st.sidebar:
-        st.header("Control Panel")
-        auto_refresh = st.toggle("🔄 Auto Refresh (30min)", value=False)
-        
-        if st.button("📈 Run New Analysis"):
-            with st.spinner("Analyzing market data..."):
-                st.session_state['analysis_result'] = bot.run_analysis()
-                st.session_state['last_update'] = datetime.now()
+if not mt5.initialize():
+    print("MT5 CONNECTION FAILED")
+    quit()
 
-    # Main content area
+print("MT5 CONNECTED")
+
+# ==========================================
+# GET DATA
+# ==========================================
+
+def get_data():
+
+    rates = mt5.copy_rates_from_pos(
+        SYMBOL,
+        TIMEFRAME,
+        0,
+        BARS
+    )
+
+    df = pd.DataFrame(rates)
+
+    df['time'] = pd.to_datetime(df['time'], unit='s')
+
+    return df
+
+# ==========================================
+# ADD INDICATORS
+# ==========================================
+
+def add_indicators(df):
+
+    df['ema50'] = ta.trend.ema_indicator(
+        df['close'],
+        window=50
+    )
+
+    df['ema200'] = ta.trend.ema_indicator(
+        df['close'],
+        window=200
+    )
+
+    df['rsi'] = ta.momentum.rsi(
+        df['close'],
+        window=14
+    )
+
+    df['atr'] = ta.volatility.average_true_range(
+        df['high'],
+        df['low'],
+        df['close'],
+        window=14
+    )
+
+    return df
+
+# ==========================================
+# SMART MONEY CONCEPTS
+# ==========================================
+
+def detect_liquidity(df):
+
+    liquidity_high = df['high'].rolling(20).max().iloc[-1]
+    liquidity_low = df['low'].rolling(20).min().iloc[-1]
+
+    return liquidity_high, liquidity_low
+
+# ==========================================
+# FAIR VALUE GAP
+# ==========================================
+
+def detect_fvg(df):
+
+    gaps = []
+
+    for i in range(2, len(df)):
+
+        prev_high = df.iloc[i - 2]['high']
+        current_low = df.iloc[i]['low']
+
+        if current_low > prev_high:
+            gaps.append("BULLISH FVG")
+
+        prev_low = df.iloc[i - 2]['low']
+        current_high = df.iloc[i]['high']
+
+        if current_high < prev_low:
+            gaps.append("BEARISH FVG")
+
+    return gaps[-1] if gaps else "NO FVG"
+
+# ==========================================
+# TREND SIGNAL
+# ==========================================
+
+def get_signal(df):
+
+    last = df.iloc[-1]
+
+    if (
+        last['ema50'] > last['ema200']
+        and last['rsi'] > 55
+    ):
+        return "BUY"
+
+    elif (
+        last['ema50'] < last['ema200']
+        and last['rsi'] < 45
+    ):
+        return "SELL"
+
+    return "WAIT"
+
+# ==========================================
+# AI MODEL
+# ==========================================
+
+model = RandomForestClassifier()
+
+def ai_prediction(df):
+
     try:
-        # Create tabs for different sections
-        tab1, tab2 = st.tabs(["📊 Analysis", "🎯 Trading Signal"])
 
-        if 'analysis_result' in st.session_state:
-            result = st.session_state['analysis_result']
-            
-            # Display current spread
-            if result.get('current_spread'):
-                st.sidebar.metric("Current Spread", f"{result['current_spread']} points")
-            
-            with tab1:
-                # Technical Analysis
-                st.markdown("### 📊 Technical Analysis")
-                st.markdown(format_signal(result['technical_features']))
-                
-                # Market Data
-                st.markdown("### 📈 Market Data by Timeframe")
-                cols = st.columns(2)
-                for idx, (tf, data) in enumerate(result['market_data'].items()):
-                    with cols[idx % 2]:
-                        display_market_data(data, tf)
-            
-            with tab2:
-                # Trading Signal
-                st.markdown("### 🎯 Trading Signal")
-                st.markdown(format_signal(result['trading_signal']))
-            
-            # Show last update time
-            st.sidebar.info(f"Last Updated: {st.session_state['last_update'].strftime('%Y-%m-%d %H:%M:%S')}")
-        else:
-            st.warning("⚠️ No analysis results yet. Click 'Run Analysis' to start.")
-        
-        # Auto-refresh progress bar
-        if auto_refresh:
-            current_time = datetime.now()
-            if 'last_refresh' not in st.session_state:
-                st.session_state['last_refresh'] = current_time
-            
-            time_diff = (current_time - st.session_state['last_refresh']).total_seconds()
-            remaining_time = 1800 - time_diff
-            
-            if remaining_time > 0:
-                progress = (1800 - remaining_time) / 1800
-                mins = int(remaining_time // 60)
-                secs = int(remaining_time % 60)
-                
-                st.sidebar.progress(progress, text=f"Next refresh in: {mins:02d}:{secs:02d}")
-            
-            if time_diff >= 1800:
-                st.session_state['last_refresh'] = current_time
-                time.sleep(1)
-                st.rerun()
-                
+        features = np.array([
+            [
+                df.iloc[-1]['ema50'],
+                df.iloc[-1]['ema200'],
+                df.iloc[-1]['rsi'],
+                df.iloc[-1]['atr']
+            ]
+        ])
+
+        prediction = model.fit(
+            features,
+            [1]
+        ).predict(features)
+
+        return "STRONG" if prediction[0] == 1 else "WEAK"
+
+    except:
+        return "UNKNOWN"
+
+# ==========================================
+# STOP LOSS / TAKE PROFIT
+# ==========================================
+
+def calculate_sl_tp(price, atr, signal):
+
+    if signal == "BUY":
+
+        sl = price - (atr * 2)
+        tp1 = price + (atr * 2)
+        tp2 = price + (atr * 4)
+
+    else:
+
+        sl = price + (atr * 2)
+        tp1 = price - (atr * 2)
+        tp2 = price - (atr * 4)
+
+    return sl, tp1, tp2
+
+# ==========================================
+# TELEGRAM ALERT
+# ==========================================
+
+def send_telegram(message):
+
+    try:
+        bot.send_message(
+            chat_id=CHAT_ID,
+            text=message
+        )
+
     except Exception as e:
-        st.error(f"Error: {str(e)}")
+        print(e)
 
-if __name__ == "__main__":
-    main()
+# ==========================================
+# EXECUTE TRADE
+# ==========================================
+
+def execute_trade(signal, sl, tp):
+
+    tick = mt5.symbol_info_tick(SYMBOL)
+
+    if signal == "BUY":
+
+        price = tick.ask
+        order_type = mt5.ORDER_TYPE_BUY
+
+    else:
+
+        price = tick.bid
+        order_type = mt5.ORDER_TYPE_SELL
+
+    request = {
+
+        "action": mt5.TRADE_ACTION_DEAL,
+        "symbol": SYMBOL,
+        "volume": LOT,
+        "type": order_type,
+        "price": price,
+        "sl": sl,
+        "tp": tp,
+        "deviation": 20,
+        "magic": 123456,
+        "comment": "AI GOLD BOT",
+        "type_time": mt5.ORDER_TIME_GTC,
+        "type_filling": mt5.ORDER_FILLING_IOC,
+    }
+
+    result = mt5.order_send(request)
+
+    return result
+
+# ==========================================
+# MAIN LOOP
+# ==========================================
+
+print("AI GOLD BOT STARTED")
+
+while True:
+
+    try:
+
+        df = get_data()
+
+        df = add_indicators(df)
+
+        signal = get_signal(df)
+
+        liquidity = detect_liquidity(df)
+
+        fvg = detect_fvg(df)
+
+        ai_strength = ai_prediction(df)
+
+        last = df.iloc[-1]
+
+        price = last['close']
+
+        atr = last['atr']
+
+        if signal != "WAIT":
+
+            sl, tp1, tp2 = calculate_sl_tp(
+                price,
+                atr,
+                signal
+            )
+
+            message = f"""
+========================
+XAUUSD AI SIGNAL
+========================
+
+SIGNAL: {signal}
+
+ENTRY: {price}
+
+STOP LOSS: {sl}
+
+TAKE PROFIT 1: {tp1}
+
+TAKE PROFIT 2: {tp2}
+
+AI STRENGTH: {ai_strength}
+
+LIQUIDITY HIGH: {liquidity[0]}
+
+LIQUIDITY LOW: {liquidity[1]}
+
+FVG: {fvg}
+
+========================
+"""
+
+            print(message)
+
+            send_telegram(message)
+
+            result = execute_trade(
+                signal,
+                sl,
+                tp2
+            )
+
+            print(result)
+
+        else:
+
+            print("NO SIGNAL")
+
+        time.sleep(60)
+
+    except Exception as e:
+
+        print("ERROR:", e)
+
+        time.sleep(10)
