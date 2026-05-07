@@ -1,71 +1,59 @@
 import streamlit as st
-import yfinance as yf
-import pandas as pd
-import time
+import streamlit.components.v1 as components
 
-st.set_page_config(page_title="GOLD LIQUIDITY RADAR", layout="centered")
+# إعداد الصفحة
+st.set_page_config(page_title="GOLD SNR RADAR", layout="centered")
 
-# تصميم الواجهة الاحترافية (بدون تعقيد)
 st.markdown("""
     <style>
-    .main { background-color: #05070a; color: white; }
-    .price-box { 
-        font-size: 50px; font-weight: bold; text-align: center; 
-        color: #FFD700; padding: 20px; border: 2px solid #FFD700; border-radius: 20px;
-    }
-    .status-tag { 
-        text-align: center; padding: 10px; border-radius: 10px; 
-        font-weight: bold; margin-top: 10px;
-    }
+    .main { background-color: #05070a; }
+    .stApp { background-color: #05070a; }
+    .title { text-align: center; color: #FFD700; font-size: 30px; font-weight: bold; margin-bottom: 20px; }
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown("<h2 style='text-align: center;'>💎 GOLD LIQUIDITY RADAR</h2>", unsafe_allow_html=True)
+st.markdown('<div class="title">💎 رادار السيولة الموحد (SNR)</div>', unsafe_allow_html=True)
 
-def fetch_data():
-    # محاولة جلب السعر الموحد بطريقة إجبارية
-    ticker = yf.Ticker("XAUUSD=X")
-    df = ticker.history(period="1d", interval="1m")
-    if df.empty:
-        # خطة بديلة فورية للذهب الآجل لضمان عدم توقف الموقع
-        ticker = yf.Ticker("GC=F")
-        df = ticker.history(period="1d", interval="1m")
-    return df
+# 1. ويدجت السعر المباشر (سيرفر 1 - سريع جداً)
+price_html = """
+<div class="tradingview-widget-container">
+  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+  {
+  "symbol": "OANDA:XAUUSD",
+  "colorTheme": "dark",
+  "width": "100%",
+  "locale": "ar"
+}
+  </script>
+</div>
+"""
 
-try:
-    data = fetch_data()
-    current_p = data['Close'].iloc[-1]
-    high_p = data['High'].max()
-    low_p = data['Low'].min()
-    
-    # عرض السعر الموحد الكبير
-    st.markdown(f"<div class='price-box'>${current_p:,.2f}</div>", unsafe_allow_html=True)
-    
-    st.write("---")
-    
-    # تحليل مناطق السيولة (المنطق الماليزي)
-    # المنطقة العلوية (Supply) والمنطقة السفلية (Demand)
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.error(f"🚨 منطقة العرض (Supply)\n\n${high_p:,.2f}")
-    with col2:
-        st.success(f"✅ منطقة الطلب (Demand)\n\n${low_p:,.2f}")
+# 2. لوحة مناطق الانعكاس (سيرفر 2 - تحليل SNR)
+snr_html = """
+<div class="tradingview-widget-container">
+  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js" async>
+  {
+  "interval": "15m",
+  "width": "100%",
+  "isTransparent": true,
+  "height": 400,
+  "symbol": "OANDA:XAUUSD",
+  "showIntervalTabs": false,
+  "displayMode": "single",
+  "locale": "ar",
+  "colorTheme": "dark"
+}
+  </script>
+</div>
+"""
 
-    # التوصية الذكية بناءً على المسافة من المناطق
-    dist_to_high = high_p - current_p
-    dist_to_low = current_p - low_p
-    
-    if dist_to_low < 1.5:
-        st.markdown("<div class='status-tag' style='background-color: #00ff00; color: black;'>🏹 اقتناص شراء من منطقة الطلب</div>", unsafe_allow_html=True)
-    elif dist_to_high < 1.5:
-        st.markdown("<div class='status-tag' style='background-color: #ff0000; color: white;'>📉 اقتناص بيع من منطقة العرض</div>", unsafe_allow_html=True)
-    else:
-        st.markdown("<div class='status-tag' style='background-color: #1c2130; color: #FFD700;'>🔎 مراقبة السيولة.. السعر بين المناطق</div>", unsafe_allow_html=True)
+# عرض البيانات بدون انتظار معالجة بايثون (تجاوز مشكلة التعليق)
+st.markdown("### 💰 السعر العالمي الموحد")
+components.html(price_html, height=130)
 
-except Exception as e:
-    st.error("جاري إعادة الربط بالبورصة العالمية...")
-    time.sleep(2)
-    st.rerun()
+st.write("---")
 
-st.caption("نظام الرادار: يعتمد على أعلى وأدنى مستويات السيولة لليوم الحالي.")
+st.markdown("### 🎯 تحليل مناطق السيولة (SNR)")
+components.html(snr_html, height=420)
+
+st.warning("⚠️ هذا الرادار مربوط مباشرة ببورصة لندن ونيويورك لضمان السعر الموحد.")
