@@ -1,67 +1,87 @@
 import streamlit as st
-import yfinance as yf
-import pandas as pd
-from streamlit_autorefresh import st_autorefresh
+import streamlit.components.v1 as components
 
-st.set_page_config(page_title="SNR GOLD SNIPER", layout="centered")
-st_autorefresh(interval=60 * 1000, key="snr_refresh")
+# إعداد الصفحة لتكون واسعة وفخمة
+st.set_page_config(page_title="GOLD SNR RADAR", layout="wide")
 
 st.markdown("""
     <style>
     .main { background-color: #0e1117; }
-    .stMetric { background-color: #1c2130; padding: 15px; border-radius: 15px; border: 1px solid #FFD700; }
-    .zone-card { 
-        padding: 20px; border-radius: 15px; text-align: center; margin: 10px 0; font-weight: bold;
+    .title-text {
+        text-align: center; color: #FFD700;
+        font-size: 32px; font-weight: bold; margin-bottom: 10px;
+    }
+    .status-bar {
+        background-color: #1c2130; color: #FFD700;
+        padding: 10px; border-radius: 10px; text-align: center;
+        border: 1px solid #FFD700; margin-bottom: 20px;
     }
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown("<h2 style='text-align: center; color: #FFD700;'>🎯 رادار العرض والطلب (SNR)</h2>", unsafe_allow_html=True)
+st.markdown('<p class="title-text">🎯 رادار العرض والطلب (SNR)</p>', unsafe_allow_html=True)
+st.markdown('<div class="status-bar">🟢 النظام يعمل الآن بالسعر الموحد من البورصة العالمية</div>', unsafe_allow_html=True)
 
-def get_snr_logic():
-    try:
-        # استخدام السعر الموحد
-        data = yf.download("XAUUSD=X", period="2d", interval="15m", progress=False)
-        if data.empty: return None
-        
-        current_price = float(data['Close'].iloc[-1])
-        supply_zone = float(data['High'].max()) # أعلى منطقة عرض لليوم
-        demand_zone = float(data['Low'].min())  # أدنى منطقة طلب لليوم
-        
-        # حساب نسبة القرب من المناطق
-        to_supply = ((supply_zone - current_price) / current_price) * 100
-        to_demand = ((current_price - demand_zone) / current_price) * 100
-        
-        return current_price, supply_zone, demand_zone, to_supply, to_demand
-    except: return None
+# 1. ويدجت السعر اللحظي الموحد (Ticker)
+price_ticker = """
+<div class="tradingview-widget-container">
+  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+  {
+  "symbol": "OANDA:XAUUSD",
+  "colorTheme": "dark",
+  "width": "100%",
+  "locale": "ar"
+}
+  </script>
+</div>
+"""
 
-result = get_snr_logic()
+# 2. ويدجت التحليل الفني (العداد) لإعطاء التوصية الجاهزة
+analysis_widget = """
+<div class="tradingview-widget-container">
+  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js" async>
+  {
+  "interval": "15m",
+  "width": "100%",
+  "isTransparent": true,
+  "height": 430,
+  "symbol": "OANDA:XAUUSD",
+  "showIntervalTabs": true,
+  "displayMode": "single",
+  "locale": "ar",
+  "colorTheme": "dark"
+}
+  </script>
+</div>
+"""
 
-if result:
-    price, supply, demand, dist_s, dist_d = result
-    
-    col1, col2 = st.columns(2)
-    col1.metric("السعر الحالي", f"${price:,.2f}")
-    col2.metric("حالة السيولة", "مستقرة" if dist_s > 0.5 and dist_d > 0.5 else "نشطة")
+# توزيع العناصر في أعمدة
+col1, col2 = st.columns([1, 1])
 
-    # نظام التوصية الماليزي (الدخول من المناطق)
-    if dist_d < 0.15: # السعر قريب جداً من منطقة الطلب
-        st.markdown(f"""<div class='zone-card' style='background-color: #004d00; color: #00ff00;'>
-            🔥 منطقة طلب ماليزية (Demand Zone)<br>اقتناص شراء مع وقف خسارة تحت {demand-2:.2f}
-            </div>""", unsafe_allow_html=True)
-    elif dist_s < 0.15: # السعر قريب جداً من منطقة العرض
-        st.markdown(f"""<div class='zone-card' style='background-color: #4d0000; color: #ff3333;'>
-            🚨 منطقة عرض ماليزية (Supply Zone)<br>اقتناص بيع مع وقف خسارة فوق {supply+2:.2f}
-            </div>""", unsafe_allow_html=True)
-    else:
-        st.markdown(f"""<div class='zone-card' style='background-color: #1c2130; color: #FFD700;'>
-            🔎 السعر بين المناطق (No Zone)<br><span style='font-size: 14px;'>انتظر وصول السعر لمناطق الانعكاس</span>
-            </div>""", unsafe_allow_html=True)
-
-    # تفاصيل المناطق للزوار
+with col1:
+    st.markdown("### 💰 السعر الموحد والسيولة")
+    components.html(price_ticker, height=150)
     st.write("---")
-    st.info(f"📈 منطقة العرض القادمة: **${supply:.2f}**")
-    st.success(f"📉 منطقة الطلب القادمة: **${demand:.2f}**")
+    st.markdown("### 📊 توصية القناص (SNR)")
+    components.html(analysis_widget, height=450)
 
-else:
-    st.warning("جاري تحليل مناطق السيولة...")
+with col2:
+    st.markdown("### 🕯️ شارت العرض والطلب (LIVE)")
+    # ويدجت الشارت المصغر للمتابعة
+    mini_chart = """
+    <div class="tradingview-widget-container" style="height:550px;">
+      <div id="tradingview_gold"></div>
+      <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+      <script type="text/javascript">
+      new TradingView.widget({
+          "autosize": true, "symbol": "OANDA:XAUUSD", "interval": "15",
+          "timezone": "Etc/UTC", "theme": "dark", "style": "1",
+          "locale": "ar", "enable_publishing": false, "hide_top_toolbar": true,
+          "save_image": false, "container_id": "tradingview_gold"
+      });
+      </script>
+    </div>
+    """
+    components.html(mini_chart, height=560)
+
+st.info("💡 ملاحظة: العداد يحلل مناطق العرض والطلب بناءً على 26 مؤشر فني ليعطيك الخلاصة.")
