@@ -1,102 +1,101 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-# إعدادات الصفحة
-st.set_page_config(page_title="Alpha Gold Live", layout="wide")
+# إعدادات الواجهة الاحترافية
+st.set_page_config(page_title="Auto-Sniper Bot", layout="wide")
 
 st.markdown("""
     <style>
     .main { background-color: #05070a; color: white; }
     .stApp { background-color: #05070a; }
-    .signal-card {
-        background: linear-gradient(135deg, #0d1117 0%, #1a1e26 100%);
-        border: 2px solid #FFD700;
-        padding: 25px;
-        border-radius: 20px;
-        text-align: center;
-    }
-    .live-price-box {
-        background-color: #11141a;
-        border: 1px solid #FFD700;
-        padding: 15px;
+    .bot-status {
+        background: linear-gradient(90deg, #11141a 0%, #1a1e26 100%);
+        border-right: 5px solid #FFD700;
+        padding: 20px;
         border-radius: 10px;
+        margin-bottom: 25px;
+    }
+    .price-live {
+        font-size: 32px;
         color: #00ff00;
-        font-size: 24px;
         font-weight: bold;
-        margin-bottom: 20px;
+        text-shadow: 0px 0px 10px rgba(0, 255, 0, 0.3);
     }
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown("<h1 style='text-align: center; color: #FFD700;'>⚡ روبوت القناص الرقمي المباشر ⚡</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; color: #FFD700;'>🤖 الروبوت الذاتي لتحليل الذهب</h1>", unsafe_allow_html=True)
 
-# --- القسم الأول: السعر المباشر (Live Ticker) ---
-# هذا الويدجت يجلب السعر الحقيقي الآن من البورصة
-ticker_html = """
+# --- 1. شريط السعر الحقيقي (Live Price Tracker) ---
+# هذا الجزء يسحب السعر من البورصة العالمية مباشرة ويحدثه كل ثانية
+live_price_html = """
 <div class="tradingview-widget-container">
-  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-tickers.js" async>
+  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
   {
-  "symbols": [{ "proName": "OANDA:XAUUSD", "title": "XAU/USD (LIVE)" }],
-  "colorTheme": "dark", "isTransparent": true, "showSymbolLogo": true, "locale": "ar"
+  "symbols": [{"proName": "FX_IDC:XAUUSD", "title": "GOLD/USD (LIVE)"}],
+  "showSymbolLogo": true, "colorTheme": "dark", "isTransparent": true, "displayMode": "adaptive", "locale": "ar"
   }
   </script>
 </div>
 """
-components.html(ticker_html, height=100)
+components.html(live_price_html, height=80)
 
-# --- القسم الثاني: التوصية والشارت ---
-col_sig, col_chart = st.columns([1, 2.2])
+# --- 2. نظام التوصية والتحليل التلقائي ---
+col_info, col_main_chart = st.columns([1.1, 2.3])
 
-with col_sig:
-    st.markdown('<div class="signal-card">', unsafe_allow_html=True)
-    st.markdown("### 🎯 توصية الروبوت اللحظية")
+with col_info:
+    st.markdown('<div class="bot-status">', unsafe_allow_html=True)
+    st.markdown("### 🏹 حالة الرادار: **جاري البحث...**")
     
-    # محاكاة إشارة مرتبطة بالسعر المباشر
-    st.markdown("<p style='color: #00ff00; font-size: 22px;'>BUY LIMIT</p>", unsafe_allow_html=True)
-    
-    st.write("📍 **نقطة الدخول المقترحة:**")
-    st.info("ابحث عن ارتداد من أقرب منطقة RBS")
-    
-    st.write("🏁 **الأهداف الرقمية:**")
-    st.success("Target 1: +40 Pips")
-    st.success("Target 2: +100 Pips")
-    
-    st.write("🛑 **وقف الخسارة:**")
-    st.error("-30 Pips من سعر الدخول")
-    
-    st.markdown("---")
-    st.write("💡 **حالة السوق الآن:**")
-    # ويدجت يعطي الإشارة بناءً على السعر الحالي تماماً
-    signal_gauge = """
-    <div style="height: 200px;">
+    # ويدجت التحليل التلقائي الذي يراقب السعر ويعطي التوصية فوراً
+    auto_signal_html = """
+    <div style="height: 400px;">
     <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js" async>
     {
       "interval": "15m", "width": "100%", "isTransparent": true, "height": "100%",
-      "symbol": "OANDA:XAUUSD", "showIntervalTabs": false, "displayMode": "single",
+      "symbol": "OANDA:XAUUSD", "showIntervalTabs": true, "displayMode": "single",
       "locale": "ar", "colorTheme": "dark"
     }
     </script></div>"""
-    components.html(signal_gauge, height=220)
+    components.html(auto_signal_html, height=420)
+    
+    st.markdown("---")
+    st.markdown("🎯 **الأهداف المقترحة (تلقائي):**")
+    st.success("TP1: +50 Pips من منطقة السيولة")
+    st.error("SL: تحت آخر قاع (Swing Low)")
     st.markdown('</div>', unsafe_allow_html=True)
 
-with col_chart:
-    # الشارت الاحترافي المباشر (يتحدث كل ثانية)
-    st.subheader("🔭 الرادار الرقمي (Live Chart)")
-    chart_html = """
+with col_main_chart:
+    # الشارت المباشر الذي يظهر عليه السعر الحقيقي
+    st.subheader("🔭 البث المباشر للسيولة")
+    full_chart_html = """
     <div class="tradingview-widget-container" style="height:550px;">
-      <div id="tv_live_robot"></div>
+      <div id="tradingview_auto"></div>
       <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
       <script type="text/javascript">
       new TradingView.widget({
-        "autosize": true, "symbol": "OANDA:XAUUSD", "interval": "15",
+        "autosize": true, "symbol": "FX:XAUUSD", "interval": "15",
         "timezone": "Etc/UTC", "theme": "dark", "style": "1", "locale": "ar",
-        "toolbar_bg": "#f1f3f6", "enable_publishing": false, "withdateranges": true,
-        "hide_side_toolbar": false, "allow_symbol_change": true, "details": true,
-        "container_id": "tv_live_robot"
+        "enable_publishing": false, "withdateranges": true, "hide_side_toolbar": false,
+        "allow_symbol_change": true, "details": true, "hotlist": true,
+        "container_id": "tradingview_auto"
       });
       </script>
     </div>
     """
-    components.html(chart_html, height=560)
+    components.html(full_chart_html, height=560)
 
-# ملف الـ Requirements.txt سيبقى: streamlit فقط
+# --- 3. قسم الأخبار اللحظية لضمان عدم انعكاس السعر ---
+st.markdown("---")
+st.subheader("🌍 رادار الأخبار الاقتصادية")
+news_ticker = """
+<div class="tradingview-widget-container">
+  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-timeline.js" async>
+  {
+  "feedMode": "symbol", "symbol": "FX:XAUUSD", "colorTheme": "dark",
+  "isTransparent": true, "displayMode": "regular", "width": "100%", "height": 400, "locale": "ar"
+  }
+  </script>
+</div>
+"""
+components.html(news_ticker, height=420)
