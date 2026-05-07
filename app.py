@@ -1,44 +1,121 @@
-import requests
+import streamlit as st
+from datetime import datetime
+from XAUSD_AI import XAUUSDTradingBot
 import time
-import string
-import random
 
-# إعدادات الصيد
-CHECK_LIMIT = 50  # عدد اليوزرات التي سيفحصها في كل مرة يعمل فيها السكربت
-CHAR_COUNT = 4    # طول اليوزر (4 حروف)
+# Must be the first Streamlit command
+st.set_page_config(page_title="XAUUSD Trading Bot", page_icon="📈", layout="wide")
 
-def generate_username(length):
-    # توليد يوزر عشوائي من حروف وأرقام
-    chars = string.ascii_lowercase + string.digits
-    return ''.join(random.choice(chars) for _ in range(length))
+# Initialize trading bot with API key from secrets
+bot = XAUUSDTradingBot(api_key=st.secrets["GROQ_API_KEY"])
 
-def check_github_user(username):
-    url = f"https://api.github.com/users/{username}"
-    response = requests.get(url)
+def display_market_data(data_str, timeframe):
+    """Display formatted market data in an expander"""
+    with st.expander(f"📊 {timeframe} Market Data", expanded=False):
+        lines = data_str.split('\n')
+        for line in lines:
+            if line.strip():
+                st.text(line)
+
+def format_signal(signal_content):
+    """Format and display trading signal content"""
+    if isinstance(signal_content, str):
+        return signal_content
+    return signal_content.content if hasattr(signal_content, 'content') else str(signal_content)
+
+def main():
+    # Custom CSS
+    st.markdown("""
+        <style>
+        .stApp {background-color: #0e1117}
+        .metric-container {
+            background-color: #1f2937;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 5px;
+        }
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 2px;
+            background-color: #1f2937;
+        }
+        .stTabs [data-baseweb="tab"] {
+            background-color: #374151;
+            padding: 10px 20px;
+            border-radius: 5px 5px 0 0;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Header
+    st.title("🤖 XAUUSD Trading Bot Dashboard")
     
-    if response.status_code == 404:
-        return True  # اليوزر متاح!
-    return False     # اليوزر محجوز
+    # Sidebar controls
+    with st.sidebar:
+        st.header("Control Panel")
+        auto_refresh = st.toggle("🔄 Auto Refresh (30min)", value=False)
+        
+        if st.button("📈 Run New Analysis"):
+            with st.spinner("Analyzing market data..."):
+                st.session_state['analysis_result'] = bot.run_analysis()
+                st.session_state['last_update'] = datetime.now()
 
-def start_hunting():
-    print(f"🚀 بدء عملية البحث عن يوزرات متاحة بطول {CHAR_COUNT} حروف...")
-    found_users = []
-    
-    for _ in range(CHECK_LIMIT):
-        user = generate_username(CHAR_COUNT)
-        if check_github_user(user):
-            print(f"✅ متاح: {user}")
-            found_users.append(user)
+    # Main content area
+    try:
+        # Create tabs for different sections
+        tab1, tab2 = st.tabs(["📊 Analysis", "🎯 Trading Signal"])
+
+        if 'analysis_result' in st.session_state:
+            result = st.session_state['analysis_result']
+            
+            # Display current spread
+            if result.get('current_spread'):
+                st.sidebar.metric("Current Spread", f"{result['current_spread']} points")
+            
+            with tab1:
+                # Technical Analysis
+                st.markdown("### 📊 Technical Analysis")
+                st.markdown(format_signal(result['technical_features']))
+                
+                # Market Data
+                st.markdown("### 📈 Market Data by Timeframe")
+                cols = st.columns(2)
+                for idx, (tf, data) in enumerate(result['market_data'].items()):
+                    with cols[idx % 2]:
+                        display_market_data(data, tf)
+            
+            with tab2:
+                # Trading Signal
+                st.markdown("### 🎯 Trading Signal")
+                st.markdown(format_signal(result['trading_signal']))
+            
+            # Show last update time
+            st.sidebar.info(f"Last Updated: {st.session_state['last_update'].strftime('%Y-%m-%d %H:%M:%S')}")
         else:
-            print(f"❌ محجوز: {user}")
-        time.sleep(0.5)  # لتجنب الحظر من API جيت هاب
-    
-    if found_users:
-        print("\n🏆 القائمة المكتشفة:")
-        for u in found_users:
-            with open("available_users.txt", "a") as f:
-                f.write(u + "\n")
-            print(f"- {u}")
+            st.warning("⚠️ No analysis results yet. Click 'Run Analysis' to start.")
+        
+        # Auto-refresh progress bar
+        if auto_refresh:
+            current_time = datetime.now()
+            if 'last_refresh' not in st.session_state:
+                st.session_state['last_refresh'] = current_time
+            
+            time_diff = (current_time - st.session_state['last_refresh']).total_seconds()
+            remaining_time = 1800 - time_diff
+            
+            if remaining_time > 0:
+                progress = (1800 - remaining_time) / 1800
+                mins = int(remaining_time // 60)
+                secs = int(remaining_time % 60)
+                
+                st.sidebar.progress(progress, text=f"Next refresh in: {mins:02d}:{secs:02d}")
+            
+            if time_diff >= 1800:
+                st.session_state['last_refresh'] = current_time
+                time.sleep(1)
+                st.rerun()
+                
+    except Exception as e:
+        st.error(f"Error: {str(e)}")
 
 if __name__ == "__main__":
-    start_hunting()
+    main()
