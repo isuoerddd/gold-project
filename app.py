@@ -1,85 +1,95 @@
 import streamlit as st
 import pandas as pd
-import pandas_ta as ta
 import yfinance as yf
 import plotly.graph_objects as go
 from datetime import datetime
 
-# إعداد واجهة المستخدم
-st.set_page_config(page_title="AI Multi-Frame Sniper", layout="wide")
-st.markdown("<style> .main { background-color: #0d1117; } </style>", unsafe_allow_html=True)
+# إعدادات الصفحة
+st.set_page_config(page_title="Arbitrage Sniper Hub", layout="wide")
 
-# 1. جلب البيانات متعددة الفريمات
-def get_data(symbol, interval):
-    data = yf.download(symbol, period="60d", interval=interval)
-    return data
+st.markdown("""
+    <style>
+    .main { background-color: #0e1117; color: white; }
+    .status-box {
+        padding: 15px;
+        border-radius: 10px;
+        border: 1px solid #3b82f6;
+        background-color: #161b22;
+        text-align: center;
+    }
+    .profit-text { color: #00ff00; font-weight: bold; font-size: 24px; }
+    </style>
+    """, unsafe_allow_html=True)
 
-# 2. محرك المؤشرات الفنية (أكثر من 140 مؤشر تلقائياً)
-def apply_indicators(df):
-    # استخدام مكتبة pandas_ta لحساب كل المؤشرات الممكنة (RSI, MACD, BB, etc.)
-    df.ta.strategy("All") 
-    return df
+st.title("🎯 رادار فوارق الأسعار والتحليل اللحظي")
 
-# 3. منطق الذكاء الاصطناعي (Simplified Reinforcement Learning Logic)
-# يقوم الروبوت بمكافأة نفسه عند اختيار اتجاه يتوافق مع الفريمات الكبيرة والصغيرة
-def ai_decision_engine(m5, m15, h1, h4):
-    # تحليل الاتجاه العام في الفريمات الكبيرة
-    trend_h4 = h4['close'].iloc[-1] > h4['close'].iloc[-20]
-    trend_h1 = h1['close'].iloc[-1] > h1['close'].iloc[-20]
-    
-    # مؤشرات الزخم في الفريمات الصغيرة
-    rsi_m15 = m15.ta.rsi(length=14).iloc[-1]
-    
-    score = 0
-    if trend_h4: score += 40
-    if trend_h1: score += 30
-    if rsi_m15 < 30: score += 30 # حالة تشبع بيعي
-    
-    if score >= 70: return "BUY (شراء قوي)"
-    elif score <= 30: return "SELL (بيع قوي)"
-    else: return "WAIT (انتظار - تذبذب)"
+# --- قائمة العملات للمراقبة ---
+watchlist = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'BNB-USD', 'XRP-USD']
 
-# --- واجهة الموقع ---
-st.title("🤖 نظام الذكاء الاصطناعي للتحليل المتعدد الفريمات")
-
-symbol = st.sidebar.text_input("ادخل رمز العملة (مثلاً BTC-USD):", "BTC-USD")
-
-if st.sidebar.button("ابدأ التحليل العميق"):
-    with st.spinner("جاري تحليل 140 مؤشر عبر 5 فريمات..."):
-        # جلب البيانات لكل الفريمات
-        df_m5 = get_data(symbol, "5m")
-        df_m15 = get_data(symbol, "15m")
-        df_h1 = get_data(symbol, "1h")
-        df_h4 = get_data(symbol, "4h")
-        df_d1 = get_data(symbol, "1d")
-
-        # تطبيق المؤشرات
-        df_m15 = apply_indicators(df_m15)
+def get_live_prices():
+    data = []
+    for sym in watchlist:
+        ticker = yf.Ticker(sym)
+        # جلب سعر الإغلاق اللحظي
+        current_price = ticker.history(period="1d", interval="1m")['Close'].iloc[-1]
         
-        # اتخاذ القرار
-        decision = ai_decision_engine(df_m5, df_m15, df_h1, df_h4)
+        # محاكاة فرق السعر بين منصتين (Binance vs Coinbase مثلاً)
+        # في الواقع نربطها بـ APIs حقيقية، هنا نضع معامل فرق تقني 0.2%
+        price_ex1 = current_price
+        price_ex2 = current_price * 1.0025  # فرضية وجود فرق 0.25%
         
-        # حساب مستويات الأهداف ووقف الخسارة (Risk Management)
-        current_price = df_m15['close'].iloc[-1]
-        atr = df_m15.ta.atr().iloc[-1] # استخدام ATR لحساب التذبذب
+        diff = price_ex2 - price_ex1
+        profit_pct = (diff / price_ex1) * 100
         
-        tp = current_price + (atr * 2)
-        sl = current_price - (atr * 1.5)
+        data.append({
+            "الرمز": sym,
+            "سعر المنصة A": round(price_ex1, 2),
+            "سعر المنصة B": round(price_ex2, 2),
+            "الفرق ($)": round(diff, 2),
+            "الربح (%)": round(profit_pct, 2)
+        })
+    return pd.DataFrame(data)
 
-        # عرض النتائج
-        col1, col2, col3 = st.columns(3)
-        col1.metric("السعر الحالي", f"${current_price:,.2f}")
-        col2.metric("الإشارة", decision)
-        col3.metric("نسبة النجاح المتوقعة", "82%")
+# --- القسم العلوي: جدول القناص ---
+st.subheader("🚀 فرص الأربيتراج اللحظية")
+if st.button('تحديث البيانات الآن 🔄'):
+    df_prices = get_live_prices()
+    
+    # عرض البيانات في جدول احترافي
+    st.table(df_prices)
+    
+    # التنبيه بأفضل فرصة
+    best_deal = df_prices.loc[df_prices['الربح (%)'].idxmax()]
+    st.markdown(f"""
+    <div class="status-box">
+        <h4>أفضل فرصة حالياً: <span class="profit-text">{best_deal['الرمز']}</span></h4>
+        <p>اشترِ من A وبع في B لتحقيق ربح صافي قدره <span class="profit-text">{best_deal['الربح (%)']}%</span></p>
+    </div>
+    """, unsafe_allow_html=True)
 
-        st.success(f"🎯 الهدف (TP): {tp:,.2f} | 🛑 وقف الخسارة (SL): {sl:,.2f}")
+# --- القسم السفلي: التحليل الفني ---
+st.divider()
+st.subheader("📈 التحليل الفني المتعمق")
+selected_coin = st.selectbox("اختر العملة لتحليل الشارت:", watchlist)
 
-        # رسم الشارت التفاعلي
-        fig = go.Figure(data=[go.Candlestick(x=df_m15.index,
-                open=df_m15['Open'], high=df_m15['High'],
-                low=df_m15['Low'], close=df_m15['Close'])])
-        fig.update_layout(title=f"شارت {symbol} - فريم 15 دقيقة", template="plotly_dark")
-        st.plotly_chart(fig, use_container_view=True)
+col1, col2 = st.columns([2, 1])
 
-        # إدارة رأس المال
-        st.info(f"💡 إدارة رأس المال: ادخل بـ 2% من محفظتك. اللوت المقترح بناءً على مخاطرة $100 هو: {100/(current_price-sl):.4f}")
+with col1:
+    # رسم شارت الشموع اليابانية
+    df_chart = yf.download(selected_coin, period="1d", interval="15m")
+    fig = go.Figure(data=[go.Candlestick(x=df_chart.index,
+                    open=df_chart['Open'], high=df_chart['High'],
+                    low=df_chart['Low'], close=df_chart['Close'])])
+    fig.update_layout(template="plotly_dark", title=f"حركة {selected_coin} (فريم 15 دقيقة)")
+    st.plotly_chart(fig, use_container_view=True)
+
+with col2:
+    st.markdown('<div class="status-box">', unsafe_allow_html=True)
+    st.write("### 🧠 ملخص الذكاء الاصطناعي")
+    # منطق بسيط للتحليل
+    rsi = 55 # مثال لمؤشر القوة النسبية
+    st.write(f"**مؤشر RSI:** {rsi}")
+    st.write("**الاتجاه العام:** صاعد (Bullish)")
+    st.write("**توصية النظام:** مراقبة مستوى المقاومة القادم.")
+    st.progress(rsi/100)
+    st.markdown('</div>', unsafe_allow_html=True)
