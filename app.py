@@ -1,78 +1,67 @@
 import streamlit as st
-import yfinance as yf
-import pandas as pd
 import streamlit.components.v1 as components
 from streamlit_autorefresh import st_autorefresh
 
-# إعدادات الصفحة
-st.set_page_config(page_title="Gold Auto-Sniper Pro", layout="wide")
+# 1. إعداد واجهة المستخدم السينمائية
+st.set_page_config(page_title="Gold Sniper Live", layout="wide")
 
-# تحديث الصفحة تلقائياً كل 60 ثانية (لضمان وصول التوصية فوراً)
-st_autorefresh(interval=60 * 1000, key="gold_refresh")
+# 2. تحديث تلقائي للنظام كل دقيقتين لضمان استقرار الاتصال
+st_autorefresh(interval=120 * 1000, key="auto_refresh_prime")
 
-st.title("🚀 قناص الذهب (تحديث تلقائي + SNR)")
+# 3. عنوان المنصة بتصميم أنيق
+st.markdown("""
+    <h1 style='text-align: center; color: #FFD700; font-family: sans-serif;'>🏹 رادار الذهب المباشر | GOLD LIVE SNIPER</h1>
+    <p style='text-align: center; color: #888;'>تحليل SNR و RSI مباشر - بدون تأخير - تحديث لحظي</p>
+    """, unsafe_allow_html=True)
 
-@st.cache_data(ttl=50) # كاش لمدة أقل من دقيقة
-def get_live_data():
-    df = yf.Ticker("GC=F").history(period="5d", interval="15m")
-    # حساب RSI
-    delta = df['Close'].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-    rs = gain / loss
-    df['RSI'] = 100 - (100 / (1 + rs))
-    # حساب EMA 200
-    df['EMA_200'] = df['Close'].ewm(span=200, adjust=False).mean()
-    return df
+# 4. دمج شارت TradingView المتقدم (النسخة الاحترافية)
+# أضفت لك مؤشرات ZigZag لتحديد القمم والقيعان (SNR) تلقائياً
+tradingview_widget = """
+<div class="tradingview-widget-container" style="height:650px;">
+  <div id="tradingview_gold_pro"></div>
+  <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+  <script type="text/javascript">
+  new TradingView.widget({
+    "autosize": true,
+    "symbol": "OANDA:XAUUSD",
+    "interval": "15",
+    "timezone": "Etc/UTC",
+    "theme": "dark",
+    "style": "1",
+    "locale": "ar",
+    "toolbar_bg": "#131722",
+    "enable_publishing": false,
+    "withdateranges": true,
+    "hide_side_toolbar": false,
+    "allow_symbol_change": true,
+    "details": true,
+    "hotlist": true,
+    "calendar": true,
+    "show_popup_button": true,
+    "popup_width": "1000",
+    "popup_height": "650",
+    "studies": [
+      "RSI@tv-basicstudies",
+      "StochasticRSI@tv-basicstudies",
+      "ZigZag@tv-basicstudies"
+    ],
+    "container_id": "tradingview_gold_pro"
+  });
+  </script>
+</div>
+"""
 
-try:
-    df = get_live_data()
-    current_p = df['Close'].iloc[-1]
-    rsi_v = df['RSI'].iloc[-1]
-    ema_v = df['EMA_200'].iloc[-1]
-    
-    # تحديد أقوى مناطق SNR لآخر 100 شمعة
-    resistance = df['High'].tail(100).max()
-    support = df['Low'].tail(100).min()
+# عرض الشارت في الموقع
+components.html(tradingview_widget, height=660)
 
-    # لوحة البيانات العلوية
-    m1, m2, m3 = st.columns(3)
-    m1.metric("سعر الذهب اللحظي", f"${current_p:,.2f}")
-    m2.metric("قوة السوق (RSI)", f"{rsi_v:.2f}")
-    m3.metric("الاتجاه العام (EMA)", "صاعد 📈" if current_p > ema_v else "هابط 📉")
+# 5. شريط التنبيهات الذكي في الأسفل
+st.markdown("---")
+col1, col2 = st.columns(2)
 
-    st.write("---")
-    
-    # محرك التوصيات الذكي
-    st.subheader("🎯 حالة التوصية الآن")
-    
-    if current_p <= support * 1.001 and rsi_v < 35:
-        st.success(f"🔥 **فرصة شراء ذهبية:** السعر عند الدعم ({support:.2f}) مع تشبع بيعي. الهدف: {resistance:.2f}")
-    elif current_p >= resistance * 0.999 and rsi_v > 65:
-        st.error(f"⚠️ **فرصة بيع قوية:** السعر عند المقاومة ({resistance:.2f}) مع تشبع شرائي. الهدف: {support:.2f}")
-    elif current_p > resistance:
-        st.info(f"🚀 **اختراق مقلوب:** السعر اخترق المقاومة. انتظر ملامسة {resistance:.2f} للدخول شراء (RBS).")
-    elif current_p < support:
-        st.warning(f"📉 **كسر هابط:** السعر كسر الدعم. انتظر ملامسة {support:.2f} للدخول بيع (SBR).")
-    else:
-        st.write("⚖️ **الانتظار سيد الموقف:** السعر في منطقة سيولة محايدة. لا توجد توصية دخول حالياً.")
+with col1:
+    st.info("💡 **كيف تقرأ الشارت؟** مؤشر ZigZag (الخطوط الملونة) يحدد لك مناطق الدعم والمقاومة SNR تلقائياً.")
 
-    # عرض شارت TradingView
-    components.html(f"""
-        <div class="tradingview-widget-container" style="height:500px;">
-            <div id="tv_chart"></div>
-            <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-            <script type="text/javascript">
-            new TradingView.widget({{
-                "autosize": true, "symbol": "OANDA:XAUUSD", "interval": "15",
-                "timezone": "Etc/UTC", "theme": "dark", "style": "1",
-                "locale": "en", "toolbar_bg": "#f1f3f6", "container_id": "tv_chart"
-            }});
-            </script>
-        </div>
-    """, height=520)
+with col2:
+    st.success("✅ **توصية RSI:** إذا وصل الخط الأزرق في الأسفل تحت مستوى 30، ابحث عن فرصة شراء فوراً.")
 
-    st.caption("ملاحظة: الموقع يحدث نفسه تلقائياً كل دقيقة لجلب آخر الأسعار والتوصيات.")
-
-except Exception as e:
-    st.info("انتظر لحظة... يتم الآن الاتصال بخادم البورصة وتحديث البيانات.")
+st.caption("التحديث: مباشر بالثانية من خوادم البورصة العالمية.")
