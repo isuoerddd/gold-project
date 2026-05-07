@@ -1,8 +1,9 @@
 import streamlit as st
-import streamlit.components.v1 as components
+import google.generativeai as genai
+from PIL import Image
 
-# إعداد الصفحة لتكون احترافية
-st.set_page_config(page_title="GOLD SNR SNIPER", layout="wide")
+# --- إعدادات الواجهة الفخمة ---
+st.set_page_config(page_title="GOLD AI SNIPER", layout="centered")
 
 st.markdown("""
     <style>
@@ -10,65 +11,77 @@ st.markdown("""
     .stApp { background-color: #05070a; }
     .header-text {
         text-align: center; color: #FFD700;
-        font-size: 35px; font-weight: bold; padding: 20px;
-        text-shadow: 2px 2px 5px #000;
+        font-size: 32px; font-weight: bold; padding: 25px;
+        text-shadow: 2px 2px 8px #000;
     }
-    .signal-card {
-        background-color: #11141a; border: 1px solid #FFD700;
-        padding: 20px; border-radius: 15px; text-align: center;
+    .report-box {
+        background-color: #11141a; border: 2px solid #FFD700;
+        padding: 25px; border-radius: 20px; margin-top: 20px;
+        color: #e0e0e0; line-height: 1.8; font-size: 17px;
     }
+    .stFileUploader { background-color: #11141a; border-radius: 12px; border: 1px dashed #FFD700; }
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown('<div class="header-text">🔱 رادار قناص الذهب (SNR) 🔱</div>', unsafe_allow_html=True)
+st.markdown('<div class="header-text">🔱 قناص الذهب بالذكاء الاصطناعي 🔱</div>', unsafe_allow_html=True)
 
-# تقسيم الصفحة إلى قسمين: الشارت والتحليل
-col1, col2 = st.columns([2, 1])
+# --- إعداد مفتاح الـ API الخاص بك ---
+GOOGLE_API_KEY = "AIzaSyDq4XiDDuRLitWDClLCLlgh1sfu2Gj9ITw" 
 
-with col1:
-    st.markdown("### 📊 الشارت الموحد (Live)")
-    # شارت احترافي يدعم التحليل الموحد
-    chart_html = """
-    <div class="tradingview-widget-container" style="height:550px;">
-      <div id="tradingview_gold"></div>
-      <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-      <script type="text/javascript">
-      new TradingView.widget({
-        "autosize": true, "symbol": "OANDA:XAUUSD", "interval": "15",
-        "timezone": "Etc/UTC", "theme": "dark", "style": "1",
-        "locale": "ar", "toolbar_bg": "#f1f3f6", "enable_publishing": false,
-        "withdateranges": true, "hide_side_toolbar": false, "allow_symbol_change": true,
-        "container_id": "tradingview_gold"
-      });
-      </script>
-    </div>
-    """
-    components.html(chart_html, height=560)
+# تهيئة موديل Gemini
+try:
+    genai.configure(api_key=GOOGLE_API_KEY)
+    # استخدام الإصدار الأحدث القادر على تحليل الصور
+    model = genai.GenerativeModel('gemini-1.5-flash') 
+except Exception as e:
+    st.error("فشل الاتصال بمحرك الذكاء الاصطناعي. تأكد من صحة المفتاح.")
 
-with col2:
-    st.markdown("### 🎯 إشارات القناص")
-    
-    # ويدجت التحليل الفني المتقدم (يعطي الترند والمناطق القوية)
-    analysis_html = """
-    <div class="tradingview-widget-container">
-      <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js" async>
-      {
-      "interval": "1h",
-      "width": "100%",
-      "isTransparent": true,
-      "height": 450,
-      "symbol": "OANDA:XAUUSD",
-      "showIntervalTabs": true,
-      "displayMode": "single",
-      "locale": "ar",
-      "colorTheme": "dark"
-    }
-      </script>
-    </div>
-    """
-    st.markdown('<div class="signal-card">', unsafe_allow_html=True)
-    components.html(analysis_html, height=460)
-    st.markdown('</div>', unsafe_allow_html=True)
-
+# --- منطقة رفع الشارت ---
 st.write("---")
-st.info("💡 **قاعدة الـ SNR:** ابحث عن مناطق 'الرفض' (Rejection) على فريم الـ 15 دقيقة لتأكيد الدخول مع الإشارة.")
+st.markdown("### 📸 ارفع سكرين شوت لشارت الذهب (TradingView)")
+uploaded_file = st.file_uploader("اختر صورة للشارت لتحليلها فوريًا...", type=["jpg", "jpeg", "png"])
+
+if uploaded_file is not None:
+    # عرض الصورة للزائر
+    image = Image.open(uploaded_file)
+    st.image(image, caption='الشارت الذي سيتم تحليله', use_column_width=True)
+    
+    # زر البدء بالتحليل
+    if st.button("🚀 ابدأ تحليل القناص الآن"):
+        with st.spinner('⏳ جاري مسح الشارت واستخراج السيولة ومناطق SNR...'):
+            try:
+                # الـ Prompt الاحترافي الموجه للمدرسة الماليزية والسيولة
+                prompt = """
+                أنت الآن محلل فني خبير متخصص في الذهب (XAUUSD) بمدرستي SNR الماليزية والسيولة (Liquidity).
+                قم بفحص الصورة المرفوعة بدقة واستخرج منها التحليل التالي:
+                
+                1. رصد مناطق الانعكاس القوية: RBS (Resistance Become Support) و SBR (Support Become Resistance).
+                2. تحديد مناطق العرض والطلب (Supply & Demand) التي لم يتم لمسها بعد.
+                3. البحث عن الجابات السعرية (Gaps) ونماذج الكلاسيك الواضحة.
+                4. الأهم: تحديد مناطق سحب السيولة (Liquidity Sweep) إذا كانت واضحة.
+                
+                اكتب التقرير باللغة العربية بأسلوب "قناص" محترف يتضمن:
+                - نوع الفرصة المكتشفة (مثلاً: شراء من منطقة RBS مع سحب سيولة).
+                - نقطة الدخول (Entry Price) بناءً على أرقام الشارت في الصورة.
+                - الهدف (Take Profit) ووقف الخسارة (Stop Loss).
+                - تقييم قوة الصفقة (مثلاً: 8/10).
+                - نصيحة فنية بناءً على حركة الشموع الظاهرة.
+                
+                إذا كانت الصورة غير واضحة أو لا توجد فرصة، قل ذلك بوضوح.
+                """
+                
+                # إرسال الصورة للموديل
+                response = model.generate_content([prompt, image])
+                
+                # عرض النتيجة
+                st.markdown("---")
+                st.markdown("### 🎯 تقرير القناص الذكي")
+                st.markdown(f'<div class="report-box">{response.text}</div>', unsafe_allow_html=True)
+                st.balloons()
+                
+            except Exception as e:
+                st.error(f"حدث خطأ أثناء معالجة الصورة: {str(e)}")
+else:
+    st.info("💡 نصيحة: ارفع صورة واضحة للشارت (يفضل فريم 15 دقيقة أو ساعة) لضمان دقة تحديد مناطق الدخول.")
+
+st.markdown("<br><hr><center><p style='color: #555;'>نظام تحليل الذهب الموحد - 2026</p></center>", unsafe_allow_html=True)
