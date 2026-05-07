@@ -1,1 +1,1 @@
-pandas
+pip install yfinance pandas_ta pandas numpy
