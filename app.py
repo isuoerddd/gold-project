@@ -29,11 +29,11 @@ st.markdown('<div class="header-text">🔱 قناص الذهب بالذكاء ا
 # --- إعداد مفتاح الـ API الخاص بك ---
 GOOGLE_API_KEY = "AIzaSyDq4XiDDuRLitWDClLCLlgh1sfu2Gj9ITw" 
 
-# تهيئة موديل Gemini (تم التعديل لضمان التوافق)
+# تهيئة موديل Gemini (استخدام الاسم البرمجي المباشر)
 try:
     genai.configure(api_key=GOOGLE_API_KEY)
-    # التسمية الكاملة والمستقرة للموديل
-    model = genai.GenerativeModel('models/gemini-1.5-flash-latest') 
+    # هذا الاسم هو الأكثر استقراراً لتجاوز خطأ 404
+    model = genai.GenerativeModel('gemini-1.5-flash') 
 except Exception as e:
     st.error("فشل الاتصال بمحرك الذكاء الاصطناعي.")
 
@@ -49,24 +49,20 @@ if uploaded_file is not None:
     if st.button("🚀 ابدأ تحليل القناص الآن"):
         with st.spinner('⏳ جاري تحليل السيولة ومناطق SNR...'):
             try:
-                # البرومبت الاحترافي لتحليل SNR والسيولة والجابات
+                # البرومبت الموجه لمدرسة SNR والسيولة
                 prompt = """
                 أنت الآن محلل فني خبير متخصص في الذهب (XAUUSD) بمدرستي SNR الماليزية والسيولة (Liquidity).
-                قم بفحص الصورة المرفوعة بدقة واستخرج منها التحليل التالي:
+                قم بفحص الصورة المرفوعة بدقة واستخرج منها التحليل التالي باللغة العربية:
                 
-                1. رصد مناطق الانعكاس القوية: RBS (Resistance Become Support) و SBR (Support Become Resistance).
-                2. تحديد مناطق العرض والطلب (Supply & Demand) التي لم يتم لمسها بعد.
-                3. البحث عن الجابات السعرية (Gaps) ونماذج الكلاسيك الواضحة.
-                4. الأهم: تحديد مناطق سحب السيولة (Liquidity Sweep) إذا كانت واضحة.
+                1. رصد مناطق الانعكاس القوية: RBS و SBR.
+                2. تحديد مناطق العرض والطلب (Supply & Demand).
+                3. البحث عن الجابات السعرية (Gaps).
+                4. تحديد مناطق سحب السيولة (Liquidity Sweep).
                 
-                اكتب التقرير باللغة العربية بأسلوب "قناص" محترف يتضمن:
-                - نوع الفرصة المكتشفة (مثلاً: شراء من منطقة RBS مع سحب سيولة).
-                - نقطة الدخول (Entry Price) بناءً على أرقام الشارت في الصورة.
-                - الهدف (Take Profit) ووقف الخسارة (Stop Loss).
-                - تقييم قوة الصفقة (مثلاً: 8/10).
-                - نصيحة فنية بناءً على حركة الشموع الظاهرة.
+                صغ التقرير بشكل احترافي يتضمن نقطة الدخول، الهدف، ووقف الخسارة.
                 """
                 
+                # استخدام generate_content مباشرة
                 response = model.generate_content([prompt, image])
                 
                 st.markdown("---")
@@ -75,7 +71,13 @@ if uploaded_file is not None:
                 st.balloons()
                 
             except Exception as e:
-                st.error(f"حدث خطأ: {str(e)}")
+                # محاولة ثانية باسم موديل مختلف إذا فشل الأول (خطة بديلة)
+                try:
+                    alt_model = genai.GenerativeModel('gemini-pro-vision')
+                    response = alt_model.generate_content([prompt, image])
+                    st.markdown(f'<div class="report-box">{response.text}</div>', unsafe_allow_html=True)
+                except:
+                    st.error(f"حدث خطأ في النظام: {str(e)}")
 else:
     st.info("💡 نصيحة: ارفع صورة واضحة للشارت لضمان دقة تحديد مناطق الدخول.")
 
