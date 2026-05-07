@@ -1,87 +1,71 @@
 import streamlit as st
-import streamlit.components.v1 as components
+import yfinance as yf
+import pandas as pd
+import time
 
-# إعداد الصفحة لتكون واسعة وفخمة
-st.set_page_config(page_title="GOLD SNR RADAR", layout="wide")
+st.set_page_config(page_title="GOLD LIQUIDITY RADAR", layout="centered")
 
+# تصميم الواجهة الاحترافية (بدون تعقيد)
 st.markdown("""
     <style>
-    .main { background-color: #0e1117; }
-    .title-text {
-        text-align: center; color: #FFD700;
-        font-size: 32px; font-weight: bold; margin-bottom: 10px;
+    .main { background-color: #05070a; color: white; }
+    .price-box { 
+        font-size: 50px; font-weight: bold; text-align: center; 
+        color: #FFD700; padding: 20px; border: 2px solid #FFD700; border-radius: 20px;
     }
-    .status-bar {
-        background-color: #1c2130; color: #FFD700;
-        padding: 10px; border-radius: 10px; text-align: center;
-        border: 1px solid #FFD700; margin-bottom: 20px;
+    .status-tag { 
+        text-align: center; padding: 10px; border-radius: 10px; 
+        font-weight: bold; margin-top: 10px;
     }
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown('<p class="title-text">🎯 رادار العرض والطلب (SNR)</p>', unsafe_allow_html=True)
-st.markdown('<div class="status-bar">🟢 النظام يعمل الآن بالسعر الموحد من البورصة العالمية</div>', unsafe_allow_html=True)
+st.markdown("<h2 style='text-align: center;'>💎 GOLD LIQUIDITY RADAR</h2>", unsafe_allow_html=True)
 
-# 1. ويدجت السعر اللحظي الموحد (Ticker)
-price_ticker = """
-<div class="tradingview-widget-container">
-  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
-  {
-  "symbol": "OANDA:XAUUSD",
-  "colorTheme": "dark",
-  "width": "100%",
-  "locale": "ar"
-}
-  </script>
-</div>
-"""
+def fetch_data():
+    # محاولة جلب السعر الموحد بطريقة إجبارية
+    ticker = yf.Ticker("XAUUSD=X")
+    df = ticker.history(period="1d", interval="1m")
+    if df.empty:
+        # خطة بديلة فورية للذهب الآجل لضمان عدم توقف الموقع
+        ticker = yf.Ticker("GC=F")
+        df = ticker.history(period="1d", interval="1m")
+    return df
 
-# 2. ويدجت التحليل الفني (العداد) لإعطاء التوصية الجاهزة
-analysis_widget = """
-<div class="tradingview-widget-container">
-  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js" async>
-  {
-  "interval": "15m",
-  "width": "100%",
-  "isTransparent": true,
-  "height": 430,
-  "symbol": "OANDA:XAUUSD",
-  "showIntervalTabs": true,
-  "displayMode": "single",
-  "locale": "ar",
-  "colorTheme": "dark"
-}
-  </script>
-</div>
-"""
-
-# توزيع العناصر في أعمدة
-col1, col2 = st.columns([1, 1])
-
-with col1:
-    st.markdown("### 💰 السعر الموحد والسيولة")
-    components.html(price_ticker, height=150)
+try:
+    data = fetch_data()
+    current_p = data['Close'].iloc[-1]
+    high_p = data['High'].max()
+    low_p = data['Low'].min()
+    
+    # عرض السعر الموحد الكبير
+    st.markdown(f"<div class='price-box'>${current_p:,.2f}</div>", unsafe_allow_html=True)
+    
     st.write("---")
-    st.markdown("### 📊 توصية القناص (SNR)")
-    components.html(analysis_widget, height=450)
+    
+    # تحليل مناطق السيولة (المنطق الماليزي)
+    # المنطقة العلوية (Supply) والمنطقة السفلية (Demand)
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.error(f"🚨 منطقة العرض (Supply)\n\n${high_p:,.2f}")
+    with col2:
+        st.success(f"✅ منطقة الطلب (Demand)\n\n${low_p:,.2f}")
 
-with col2:
-    st.markdown("### 🕯️ شارت العرض والطلب (LIVE)")
-    # ويدجت الشارت المصغر للمتابعة
-    mini_chart = """
-    <div class="tradingview-widget-container" style="height:550px;">
-      <div id="tradingview_gold"></div>
-      <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-      <script type="text/javascript">
-      new TradingView.widget({
-          "autosize": true, "symbol": "OANDA:XAUUSD", "interval": "15",
-          "timezone": "Etc/UTC", "theme": "dark", "style": "1",
-          "locale": "ar", "enable_publishing": false, "hide_top_toolbar": true,
-          "save_image": false, "container_id": "tradingview_gold"
-      });
-      </script>
-    </div>
-    """
-    components.html(mini_chart, height=560)
+    # التوصية الذكية بناءً على المسافة من المناطق
+    dist_to_high = high_p - current_p
+    dist_to_low = current_p - low_p
+    
+    if dist_to_low < 1.5:
+        st.markdown("<div class='status-tag' style='background-color: #00ff00; color: black;'>🏹 اقتناص شراء من منطقة الطلب</div>", unsafe_allow_html=True)
+    elif dist_to_high < 1.5:
+        st.markdown("<div class='status-tag' style='background-color: #ff0000; color: white;'>📉 اقتناص بيع من منطقة العرض</div>", unsafe_allow_html=True)
+    else:
+        st.markdown("<div class='status-tag' style='background-color: #1c2130; color: #FFD700;'>🔎 مراقبة السيولة.. السعر بين المناطق</div>", unsafe_allow_html=True)
 
-st.info("💡 ملاحظة: العداد يحلل مناطق العرض والطلب بناءً على 26 مؤشر فني ليعطيك الخلاصة.")
+except Exception as e:
+    st.error("جاري إعادة الربط بالبورصة العالمية...")
+    time.sleep(2)
+    st.rerun()
+
+st.caption("نظام الرادار: يعتمد على أعلى وأدنى مستويات السيولة لليوم الحالي.")
