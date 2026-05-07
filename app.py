@@ -1,67 +1,74 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
+import pandas_ta as ta
 import streamlit.components.v1 as components
 
-# إعداد واجهة المنصة
-st.set_page_config(page_title="SNR Alpha Sniper", layout="wide")
-st.title("🏹 قناص الـ SNR الذكي - الذهب")
+# إعدادات الواجهة الاحترافية
+st.set_page_config(page_title="Gold Alpha Pro Sniper", layout="wide")
+st.title("🚀 قناص الذهب المحترف (SNR + RSI + Trend)")
 
-# جلب بيانات الذهب اللحظية
 @st.cache_data(ttl=60)
-def get_gold_data():
-    gold = yf.Ticker("GC=F")
-    df = gold.history(period="2d", interval="15m")
+def get_advanced_data():
+    # جلب بيانات 5 أيام بفريم 15 دقيقة
+    df = yf.Ticker("GC=F").history(period="5d", interval="15m")
+    # حساب مؤشر القوة النسبية RSI
+    df['RSI'] = ta.rsi(df['Close'], length=14)
+    # حساب المتوسط المتحرك EMA 200 لتحديد الاتجاه العام
+    df['EMA_200'] = ta.ema(df['Close'], length=200)
     return df
 
 try:
-    data = get_gold_data()
-    current_price = data['Close'].iloc[-1]
+    df = get_advanced_data()
+    current_p = df['Close'].iloc[-1]
+    rsi_v = df['RSI'].iloc[-1]
+    ema_v = df['EMA_200'].iloc[-1]
     
-    # حساب أعلى قمة وأدنى قاع لآخر 50 شمعة (مناطق السيولة)
-    resistance = data['High'].tail(50).max()
-    support = data['Low'].tail(50).min()
+    # تحديد أقوى مناطق SNR لآخر 100 شمعة
+    resistance = df['High'].tail(100).max()
+    support = df['Low'].tail(100).min()
 
-    # لوحة المعلومات السريعة
-    col_price, col_signal = st.columns(2)
-    with col_price:
-        st.metric("سعر الذهب الآن", f"${current_price:,.2f}")
+    # لوحة المؤشرات العلوية
+    m1, m2, m3 = st.columns(3)
+    with m1:
+        st.metric("سعر الذهب الآن", f"${current_p:,.2f}")
+    with m2:
+        st.metric("قوة السوق (RSI)", f"{rsi_v:.2f}")
+    with m3:
+        trend = "صاعد 📈" if current_p > ema_v else "هابط 📉"
+        st.metric("الاتجاه العام", trend)
+
+    st.write("---")
+
+    # نظام التوصية الذكي
+    st.subheader("🎯 التوصية البرمجية اللحظية")
     
-    with col_signal:
-        # منطق التوصية المبني على مفاهيم SNR
-        if current_price >= resistance * 0.999:
-            st.error("⚠️ منطقة مقاومة: انتبه لارتداد بيعي أو اختراق (SBR)")
-        elif current_price <= support * 1.001:
-            st.success("✅ منطقة دعم: انتبه لارتداد شرائي أو كسر (RBS)")
-        else:
-            st.info("🔄 السعر يتحرك بين المناطق - انتظر السيولة")
-
-    # عرض شارت TradingView للمتابعة البصرية
-    tradingview_widget = """
-    <div class="tradingview-widget-container" style="height:500px;">
-      <div id="tradingview_gold"></div>
-      <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-      <script type="text/javascript">
-      new TradingView.widget({
-        "autosize": true, "symbol": "OANDA:XAUUSD", "interval": "15",
-        "timezone": "Etc/UTC", "theme": "dark", "style": "1",
-        "locale": "en", "toolbar_bg": "#f1f3f6", "enable_publishing": false,
-        "container_id": "tradingview_gold"
-      });
-      </script>
-    </div>
-    """
-    components.html(tradingview_widget, height=520)
-
-    # قسم شروط التوصية (SNR Checklist)
-    st.subheader("📋 شروط التوصية الحالية")
-    if current_price > resistance:
-        st.write("🔥 **الحالة:** تم اختراق المقاومة! انتظر العودة لـ **$" + str(round(resistance,2)) + "** للشراء (RBS).")
-    elif current_price < support:
-        st.write("📉 **الحالة:** تم كسر الدعم! انتظر العودة لـ **$" + str(round(support,2)) + "** للبيع (SBR).")
+    if current_p <= support * 1.001 and rsi_v < 35:
+        st.success(f"🔥 فرصة شراء ذهبية: السعر عند الدعم ({support:.2f}) مع تشبع بيعي (RSI).")
+    elif current_p >= resistance * 0.999 and rsi_v > 65:
+        st.error(f"⚠️ فرصة بيع قوية: السعر عند المقاومة ({resistance:.2f}) مع تشبع شرائي (RSI).")
+    elif current_p > resistance:
+        st.info(f"🚀 اختراق: السعر فوق المقاومة. انتظر إعادة الاختبار لـ {resistance:.2f} للشراء (RBS).")
+    elif current_p < support:
+        st.warning(f"📉 كسر: السعر تحت الدعم. انتظر إعادة الاختبار لـ {support:.2f} للبيع (SBR).")
     else:
-        st.write(f"⚖️ **الوضع:** السعر محصور بين الدعم ({support:.2f}) والمقاومة ({resistance:.2f}). لا تدخل حتى يكسر أحدهما.")
+        st.write("⚖️ **الوضع الحالي:** السعر في منطقة محايدة. انتظر اقترابه من المناطق المحددة أعلاه.")
+
+    # عرض الشارت المباشر
+    tradingview_html = f"""
+        <div class="tradingview-widget-container" style="height:500px;">
+            <div id="tv_chart"></div>
+            <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+            <script type="text/javascript">
+            new TradingView.widget({{
+                "autosize": true, "symbol": "OANDA:XAUUSD", "interval": "15",
+                "timezone": "Etc/UTC", "theme": "dark", "style": "1",
+                "locale": "en", "toolbar_bg": "#f1f3f6", "container_id": "tv_chart"
+            }});
+            </script>
+        </div>
+    """
+    components.html(tradingview_html, height=520)
 
 except Exception as e:
-    st.warning("جاري الاتصال بمزود البيانات... تأكد من تحديث الصفحة.")
-
+    st.info("جاري تحديث البيانات من البورصة... انتظر لحظة.")
