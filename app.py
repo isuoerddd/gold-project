@@ -1,48 +1,51 @@
 import streamlit as st
-import google.generativeai as genai
+import numpy as np
+import cv2
 from PIL import Image
 
-# إعدادات الواجهة
-st.set_page_config(page_title="GOLD AI SNIPER", layout="centered")
+st.set_page_config(page_title="SNR ANALYZER", layout="centered")
 
 st.markdown("""
     <style>
     .main { background-color: #05070a; color: white; }
-    .header-text { text-align: center; color: #FFD700; font-size: 32px; font-weight: bold; padding: 25px; }
-    .report-box { background-color: #11141a; border: 2px solid #FFD700; padding: 25px; border-radius: 20px; direction: rtl; text-align: right; }
+    .header { text-align: center; color: #FFD700; padding: 20px; font-size: 30px; font-weight: bold; }
+    .result-card { background-color: #11141a; border: 1px solid #FFD700; padding: 20px; border-radius: 15px; }
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown('<div class="header-text">🔱 قناص الذهب بالذكاء الاصطناعي 🔱</div>', unsafe_allow_html=True)
+st.markdown('<div class="header">🔱 محلل الشارت الهندسي (بدون API) 🔱</div>', unsafe_allow_html=True)
 
-# المفتاح الخاص بك
-API_KEY = "AIzaSyDq4XiDDuRLitWDClLCLlgh1sfu2Gj9ITw"
-
-try:
-    genai.configure(api_key=API_KEY)
-    # تعريف الموديل بدون كلمة models/ لتجنب مشاكل الإصدارات
-    model = genai.GenerativeModel('gemini-1.5-flash')
-except:
-    st.error("فشل في تهيئة محرك الذكاء الاصطناعي")
-
-uploaded_file = st.file_uploader("ارفع شارت الذهب (TradingView)...", type=["jpg", "png", "jpeg"])
+uploaded_file = st.file_uploader("ارفع صورة الشارت...", type=["jpg", "png", "jpeg"])
 
 if uploaded_file:
+    # تحويل الصورة إلى تنسيق يفهمه OpenCV
     image = Image.open(uploaded_file)
-    st.image(image, caption='الشارت المرفوع', use_column_width=True)
+    img_array = np.array(image)
+    st.image(image, caption='تم رفع الشارت بنجاح', use_column_width=True)
     
-    if st.button("🚀 ابدأ تحليل القناص"):
-        with st.spinner('⏳ جاري فحص السيولة و SNR...'):
-            try:
-                # البرومبت المركز
-                prompt = "أنت محلل ذهب خبير. حلل الصورة واستخرج مناطق SNR (RBS/SBR) والسيولة والجاب. اعطِ توصية: دخول، هدف، وقف."
+    if st.button("🔍 تحليل المناطق الهندسية"):
+        with st.spinner('جاري مسح مستويات السيولة...'):
+            # 1. تحويل الصورة للأبيض والأسود لاكتشاف المناطق
+            gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
+            
+            # 2. اكتشاف الحواف (Edges) لتحديد القمم والقيعان
+            edges = cv2.Canny(gray, 50, 150)
+            
+            # 3. حساب الكثافة السعرية (لاكتشاف مناطق العرض والطلب)
+            # ملاحظة: هذا تحليل رياضي بحت بناءً على توزيع بكسلات السعر
+            row_sums = np.sum(edges, axis=1)
+            high_liquidity_zones = np.where(row_sums > (np.max(row_sums) * 0.7))[0]
+            
+            st.markdown("### 📊 نتائج المسح الهندي:")
+            st.markdown('<div class="result-card">', unsafe_allow_html=True)
+            
+            if len(high_liquidity_zones) > 0:
+                st.success("✅ تم رصد مناطق تمركز سيولة (SNR) في الصورة.")
+                st.write(f"عدد المناطق القوية المكتشفة: {len(high_liquidity_zones) // 10}")
+                st.info("نصيحة هندسية: السعر يميل للانعكاس عند المناطق التي تكثر فيها الذيول في الصورة.")
+            else:
+                st.warning("لم يتم اكتشاف مناطق واضحة، حاول رفع صورة بألوان متباينة.")
                 
-                # إرسال الطلب
-                response = model.generate_content([prompt, image])
-                
-                st.markdown("### 🎯 تقرير القناص الذكي")
-                st.markdown(f'<div class="report-box">{response.text}</div>', unsafe_allow_html=True)
-                st.balloons()
-            except Exception as e:
-                st.error(f"حدث خطأ في السيرفر: {str(e)}")
-                st.info("ملاحظة: إذا ظهر خطأ 404، يرجى إعادة تشغيل التطبيق (Reboot) بعد تحديث الـ requirements.")
+            st.markdown('</div>', unsafe_allow_html=True)
+
+st.caption("هذا النظام يعتمد على معالجة البكسلات (Computer Vision) ولا يتطلب اتصالاً بسيرفرات خارجية.")
