@@ -1,95 +1,108 @@
 import streamlit as st
 import pandas as pd
+import pandas_ta as ta
 import yfinance as yf
 import plotly.graph_objects as go
 from datetime import datetime
 
-# إعدادات الصفحة
-st.set_page_config(page_title="Arbitrage Sniper Hub", layout="wide")
+# إعدادات الواجهة البرمجية الاحترافية
+st.set_page_config(page_title="EUR/USD Scalper Pro", layout="wide")
 
 st.markdown("""
     <style>
-    .main { background-color: #0e1117; color: white; }
-    .status-box {
-        padding: 15px;
-        border-radius: 10px;
-        border: 1px solid #3b82f6;
-        background-color: #161b22;
+    .main { background-color: #0b0e14; color: #e0e0e0; }
+    .stMetric { background-color: #161b22; border-radius: 10px; padding: 15px; border: 1px solid #30363d; }
+    .signal-card {
+        padding: 20px;
+        border-radius: 12px;
         text-align: center;
+        margin-bottom: 20px;
+        border: 2px solid #3b82f6;
+        background: linear-gradient(145deg, #161b22, #0d1117);
     }
-    .profit-text { color: #00ff00; font-weight: bold; font-size: 24px; }
+    .trend-up { color: #00ff00; font-weight: bold; }
+    .trend-down { color: #ff4b4b; font-weight: bold; }
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🎯 رادار فوارق الأسعار والتحليل اللحظي")
+# دالة جلب البيانات الحية
+def fetch_data(symbol, period, interval):
+    data = yf.download(symbol, period=period, interval=interval, progress=False)
+    return data
 
-# --- قائمة العملات للمراقبة ---
-watchlist = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'BNB-USD', 'XRP-USD']
-
-def get_live_prices():
-    data = []
-    for sym in watchlist:
-        ticker = yf.Ticker(sym)
-        # جلب سعر الإغلاق اللحظي
-        current_price = ticker.history(period="1d", interval="1m")['Close'].iloc[-1]
-        
-        # محاكاة فرق السعر بين منصتين (Binance vs Coinbase مثلاً)
-        # في الواقع نربطها بـ APIs حقيقية، هنا نضع معامل فرق تقني 0.2%
-        price_ex1 = current_price
-        price_ex2 = current_price * 1.0025  # فرضية وجود فرق 0.25%
-        
-        diff = price_ex2 - price_ex1
-        profit_pct = (diff / price_ex1) * 100
-        
-        data.append({
-            "الرمز": sym,
-            "سعر المنصة A": round(price_ex1, 2),
-            "سعر المنصة B": round(price_ex2, 2),
-            "الفرق ($)": round(diff, 2),
-            "الربح (%)": round(profit_pct, 2)
-        })
-    return pd.DataFrame(data)
-
-# --- القسم العلوي: جدول القناص ---
-st.subheader("🚀 فرص الأربيتراج اللحظية")
-if st.button('تحديث البيانات الآن 🔄'):
-    df_prices = get_live_prices()
+# المحرك التحليلي (Logic Engine)
+def analyze_scalp(df_m15, df_h1):
+    # 1. تحديد الترند من الفريم الكبير (H1) باستخدام EMA 200
+    df_h1['ema200'] = ta.ema(df_h1['Close'], length=200)
+    current_h1 = df_h1['Close'].iloc[-1]
+    ema_h1 = df_h1['ema200'].iloc[-1]
     
-    # عرض البيانات في جدول احترافي
-    st.table(df_prices)
+    trend = "UP" if current_h1 > ema_h1 else "DOWN"
     
-    # التنبيه بأفضل فرصة
-    best_deal = df_prices.loc[df_prices['الربح (%)'].idxmax()]
+    # 2. مؤشرات الدخول للفريم الصغير (M15)
+    df_m15.ta.rsi(length=14, append=True)
+    df_m15.ta.macd(append=True)
+    
+    last_rsi = df_m15['RSI_14'].iloc[-1]
+    price = df_m15['Close'].iloc[-1]
+    
+    # منطق التوصية (مع الترند فقط)
+    signal = "انتظار (No Setup)"
+    if trend == "UP" and last_rsi < 40:
+        signal = "BUY (شراء سكالب)"
+    elif trend == "DOWN" and last_rsi > 60:
+        signal = "SELL (بيع سكالب)"
+        
+    return trend, signal, price
+
+# --- الواجهة الرئيسية ---
+st.markdown("<h1 style='text-align: center; color: #58a6ff;'>💎 EUR/USD Scalper Intelligence</h1>", unsafe_allow_html=True)
+
+symbol = "EURUSD=X"
+
+if st.sidebar.button("تحديث النبض السعري 🔄"):
+    # جلب البيانات
+    df_m15 = fetch_data(symbol, "5d", "15m")
+    df_h1 = fetch_data(symbol, "20d", "1h")
+    
+    trend, signal, current_price = analyze_scalp(df_m15, df_h1)
+    
+    # حساب الأهداف (50 نقطة = 0.0050)
+    pip_value = 0.0050
+    tp = current_price + pip_value if "BUY" in signal else current_price - pip_value
+    sl = current_price - (pip_value * 0.6) if "BUY" in signal else current_price + (pip_value * 0.6)
+
+    # عرض المقاييس الحية
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.metric("السعر الحي الحالي", f"{current_price:.5f}")
+    with c2:
+        trend_class = "trend-up" if trend == "UP" else "trend-down"
+        st.markdown(f"<div class='stMetric'>الاتجاه العام (H1): <span class='{trend_class}'>{trend}</span></div>", unsafe_allow_html=True)
+    with c3:
+        st.metric("قوة الزخم (RSI)", f"{df_m15['RSI_14'].iloc[-1]:.2f}")
+
+    # كارت التوصية الاحترافي
     st.markdown(f"""
-    <div class="status-box">
-        <h4>أفضل فرصة حالياً: <span class="profit-text">{best_deal['الرمز']}</span></h4>
-        <p>اشترِ من A وبع في B لتحقيق ربح صافي قدره <span class="profit-text">{best_deal['الربح (%)']}%</span></p>
+    <div class="signal-card">
+        <h2 style='color: #58a6ff;'>إشارة القناص اللحظية</h2>
+        <h1 style='color: {"#00ff00" if "BUY" in signal else "#ff4b4b" if "SELL" in signal else "#8b949e"}'>{signal}</h1>
+        <p style='font-size: 1.2em;'>🎯 الهدف (TP): <b>{tp:.5f}</b> | 🛑 الوقف (SL): <b>{sl:.5f}</b></p>
+        <small>سبب الدخول: توافق الترند الرئيسي مع تشبع لحظي على فريم 15 دقيقة</small>
     </div>
     """, unsafe_allow_html=True)
 
-# --- القسم السفلي: التحليل الفني ---
-st.divider()
-st.subheader("📈 التحليل الفني المتعمق")
-selected_coin = st.selectbox("اختر العملة لتحليل الشارت:", watchlist)
-
-col1, col2 = st.columns([2, 1])
-
-with col1:
-    # رسم شارت الشموع اليابانية
-    df_chart = yf.download(selected_coin, period="1d", interval="15m")
-    fig = go.Figure(data=[go.Candlestick(x=df_chart.index,
-                    open=df_chart['Open'], high=df_chart['High'],
-                    low=df_chart['Low'], close=df_chart['Close'])])
-    fig.update_layout(template="plotly_dark", title=f"حركة {selected_coin} (فريم 15 دقيقة)")
+    # الشارت التفاعلي
+    fig = go.Figure(data=[go.Candlestick(x=df_m15.index,
+                open=df_m15['Open'], high=df_m15['High'],
+                low=df_m15['Low'], close=df_m15['Close'])])
+    fig.update_layout(template="plotly_dark", height=500, title="EUR/USD Scalping Chart (M15)")
     st.plotly_chart(fig, use_container_view=True)
+else:
+    st.info("اضغط على 'تحديث النبض السعري' لبدء التحليل اللحظي.")
 
-with col2:
-    st.markdown('<div class="status-box">', unsafe_allow_html=True)
-    st.write("### 🧠 ملخص الذكاء الاصطناعي")
-    # منطق بسيط للتحليل
-    rsi = 55 # مثال لمؤشر القوة النسبية
-    st.write(f"**مؤشر RSI:** {rsi}")
-    st.write("**الاتجاه العام:** صاعد (Bullish)")
-    st.write("**توصية النظام:** مراقبة مستوى المقاومة القادم.")
-    st.progress(rsi/100)
-    st.markdown('</div>', unsafe_allow_html=True)
+st.sidebar.markdown("---")
+st.sidebar.write("⚙️ **إدارة المخاطر:**")
+st.sidebar.write("- أقصى عدد صفقات يومياً: 2")
+st.sidebar.write("- المخاطرة لكل صفقة: 1% من الحساب")
+st.sidebar.write("- نوع التحليل: Price Action + Trend Following")
