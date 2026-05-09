@@ -1,79 +1,90 @@
 import streamlit as st
-import yfinance as yf
-import pandas as pd
 
-# إعدادات المنصة الاحترافية
-st.set_page_config(page_title="Scalping Depth Radar", layout="wide")
+# إعداد واجهة المهندس الاحترافية
+st.set_page_config(page_title="Ultra-Light Gold Radar", layout="wide")
 
+# تصميم الثيم المظلم (Dark Mode) لراحة العين أثناء السكالبينج
 st.markdown("""
     <style>
-    .main { background-color: #0b0e14; }
-    .price-header { background: #161b22; padding: 20px; border-radius: 10px; border: 1px solid #2962ff; text-align: center; }
-    .live-num { font-size: 50px; font-weight: bold; color: #2962ff; }
+    .main { background-color: #0b0e14; color: white; }
+    .stNumberInput { background-color: #161b22 !important; border: 1px solid #2962ff !important; color: white !important; }
+    .reportview-container .main .block-container { padding-top: 2rem; }
     </style>
     """, unsafe_allow_html=True)
 
-# جلب البيانات الحية (Real-time Feed)
-def get_live_data():
-    try:
-        # الذهب الفوري
-        ticker = yf.Ticker("XAUUSD=X")
-        data = ticker.history(period="1d", interval="1m")
-        if not data.empty:
-            return data.iloc[-1]['Close'], data['High'].max(), data['Low'].min()
-    except:
-        return None, None, None
-    return None, None, None
+st.title("⚡ رادار الذهب السريع - نسخة السكالبينج")
 
-current, high, low = get_live_data()
+# تقسيم الشاشة إلى جزءين: الشارت والحاسبة
+col1, col2 = st.columns([3, 1])
 
-# --- واجهة الموقع ---
-st.title("⚡ شاشة السكالبينج وعمق السعر")
+with col1:
+    st.subheader("📈 نبض السعر المباشر (TradingView)")
+    # استخدام Widget مجاني وخفيف جداً لضمان عدم التعليق
+    tradingview_widget = """
+    <div class="tradingview-widget-container">
+      <div id="tradingview_expert"></div>
+      <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+      <script type="text/javascript">
+      new TradingView.widget({
+        "width": "100%",
+        "height": 550,
+        "symbol": "OANDA:XAUUSD",
+        "interval": "1",
+        "timezone": "Etc/UTC",
+        "theme": "dark",
+        "style": "1",
+        "locale": "ar",
+        "enable_publishing": false,
+        "hide_side_toolbar": false,
+        "allow_symbol_change": true,
+        "container_id": "tradingview_expert"
+      });
+      </script>
+    </div>
+    """
+    st.components.v1.html(tradingview_widget, height=560)
 
-if current:
-    # شاشة السعر العلوي
-    st.markdown(f"""
-        <div class="price-header">
-            <p style="color: #8b949e; margin:0;">XAU/USD - LIVE PRICE</p>
-            <div class="live-num">${current:.2f}</div>
-        </div>
-    """, unsafe_allow_html=True)
-
+with col2:
+    st.subheader("🧮 حاسبة السكالب")
+    st.write("أدخل البيانات من الشارت:")
+    
+    # مدخلات يدوية لضمان سرعة الموقع وعدم حدوث خطأ في الاتصال
+    high = st.number_input("أعلى سعر (High)", format="%.2f", value=2350.00)
+    low = st.number_input("أدنى سعر (Low)", format="%.2f", value=2320.00)
+    current = st.number_input("السعر الحالي", format="%.2f", value=2335.00)
+    
     st.write("---")
-
-    # تقسيم الشاشة: شارت + توصية
-    col1, col2 = st.columns([3, 1])
-
-    with col1:
-        st.subheader("📉 شاشة التداول (TradingView Live)")
-        # استخدام Widget تريدنج فيو الرسمي المضمون العمل
-        tv_chart = """
-        <div class="tradingview-widget-container">
-          <div id="tv_chart_61b"></div>
-          <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-          <script type="text/javascript">
-          new TradingView.widget({
-            "width": "100%", "height": 500, "symbol": "OANDA:XAUUSD",
-            "interval": "1", "timezone": "Etc/UTC", "theme": "dark",
-            "style": "1", "locale": "ar", "enable_publishing": false,
-            "hide_side_toolbar": false, "container_id": "tv_chart_61b"
-          });
-          </script>
-        </div>
-        """
-        st.components.v1.html(tv_chart, height=520)
-
-    with col2:
-        st.subheader("🎯 رادار السكالب")
-        st.write(f"**القمة:** {high:.2f}")
-        st.write(f"**القاع:** {low:.2f}")
+    
+    if st.button("🚀 تحليل فوري"):
+        # معادلة الزوايا الهندسية (نسخة السكالب السريع)
+        diff = high - low
+        # مناطق الدخول الحرجة
+        buy_trigger = low + (diff * 0.236)
+        sell_trigger = high - (diff * 0.236)
         
-        if st.button("تحليل السيولة الآن"):
-            diff = high - low
-            # حساب مستويات السكالب (Order Flow Logic)
-            if current > (low + diff * 0.6):
-                st.success(f"✅ سيولة شرائية قوية\nهدف سكالب: {current + 2:.2f}")
-            else:
-                st.error(f"⚠️ سيولة بيعية مسيطرة\nهدف سكالب: {current - 2:.2f}")
-else:
-    st.warning("⚠️ جاري جلب نبض السعر من البورصة العالمية...")
+        if current >= buy_trigger:
+            target = current + (diff * 0.125)
+            st.success(f"📈 إشارة شراء (سكالب)\nالهدف: {target:.2f}")
+        elif current <= sell_trigger:
+            target = current - (diff * 0.125)
+            st.error(f"📉 إشارة بيع (سكالب)\nالهدف: {target:.2f}")
+        else:
+            st.info("🔄 السعر في منطقة توازن (انتظر)")
+
+# شريط الأسعار السفلي (Ticker Tape) - خفيف جداً ومجاني
+st.write("---")
+ticker_tape = """
+<div class="tradingview-widget-container">
+  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
+  {
+  "symbols": [
+    {"proName": "FOREXCOM:XAUUSD", "title": "الذهب"},
+    {"proName": "OANDA:XAGUSD", "title": "الفضة"},
+    {"proName": "FX_IDC:USDIQD", "title": "الدولار/دينار"}
+  ],
+  "showSymbolLogo": true, "colorTheme": "dark", "isTransparent": true, "displayMode": "adaptive", "locale": "ar"
+  }
+  </script>
+</div>
+"""
+st.components.v1.html(ticker_tape, height=100)
