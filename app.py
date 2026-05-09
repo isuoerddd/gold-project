@@ -1,78 +1,76 @@
 import streamlit as st
 import yfinance as yf
-import pandas as pd
+from streamlit_autorefresh import st_autorefresh
 
-# إعدادات الواجهة الاحترافية (Dark Mode)
+# إعداد واجهة المهندس
 st.set_page_config(page_title="Gann Live Sniper", layout="wide")
+
+# تحديث تلقائي كل 5 ثوانٍ لضمان "نبض" السعر
+st_autorefresh(interval=5000, key="price_refresh")
 
 st.markdown("""
     <style>
     .main { background-color: #0d1117; color: white; }
-    .price-container { 
+    .price-card { 
         background: #161b22; 
         border-radius: 15px; 
-        padding: 20px; 
+        padding: 30px; 
         border: 2px solid #58a6ff; 
         text-align: center; 
-        margin-bottom: 20px;
     }
-    .live-label { color: #8b949e; font-size: 18px; }
-    .price-value { font-size: 50px; font-weight: bold; color: #58a6ff; }
+    .live-val { font-size: 60px; font-weight: bold; color: #58a6ff; }
     </style>
     """, unsafe_allow_html=True)
 
 st.title("⚖️ رادار الذهب الهندسي (بث حي)")
 
-# الرمز السعري (استخدمنا الرمز الأكثر دقة للذهب الفوري)
-symbol = "XAUUSD=X"
+# الرمز السعري (بناءً على صورتك 4715 هو الفضة XAGUSD=X)
+# إذا تريد الذهب الفوري غيره إلى XAUUSD=X
+symbol = "XAGUSD=X" 
 
-# دالة جلب البيانات اللحظية
-def get_live_market_data():
+try:
     ticker = yf.Ticker(symbol)
-    # جلب بيانات دقيقة جداً (آخر 1 دقيقة)
-    data = ticker.history(period="1d", interval="1m")
-    if not data.empty:
-        current = ticker.fast_info['last_price']
-        high = float(data['High'].max())
-        low = float(data['Low'].min())
-        return current, high, low
-    return None, None, None
-
-# --- عرض السعر الحي ---
-current, high, low = get_live_market_data()
-
-if current:
-    st.markdown(f"""
-        <div class="price-container">
-            <div class="live-label">سعر الذهب الآن (مباشر)</div>
-            <div class="price-value">{current:.2f}</div>
-        </div>
-    """, unsafe_allow_html=True)
-
-    # عرض القمة والقاع لليوم
-    c1, c2 = st.columns(2)
-    c1.metric("أعلى سعر اليوم", f"{high:.2f}")
-    c2.metric("أدنى سعر اليوم", f"{low:.2f}")
+    # جلب بيانات دقيقة جداً
+    df = ticker.history(period="1d", interval="1m")
     
-    st.write("---")
-
-    # --- زر استخراج التوصية ---
-    if st.button("🎯 استخراج التوصية بناءً على السعر الحالي"):
-        diff = high - low
-        # حساب الزوايا
-        buy_trigger = low + (diff * 0.225)
-        sell_trigger = high - (diff * 0.225)
+    if not df.empty:
+        current_price = float(df['Close'].iloc[-1])
+        high_day = float(df['High'].max())
+        low_day = float(df['Low'].min())
         
-        if current >= buy_trigger:
-            target = current + (diff * 0.125)
-            st.success(f"🟢 إشارة شراء (BUY): السعر مستقر فوق الزاوية | المستهدف: {target:.2f}")
-        elif current <= sell_trigger:
-            target = current - (diff * 0.125)
-            st.error(f"🔴 إشارة بيع (SELL): السعر كسر زاوية الدعم | المستهدف: {target:.2f}")
-        else:
-            st.info("🔄 السعر في منطقة تذبذب عرضي.. انتظر ملامسة الزوايا")
-else:
-    st.warning("⚠️ جاري الاتصال بمزود الأسعار.. تأكد من افتتاح السوق")
+        # عرض السعر الحي
+        st.markdown(f"""
+            <div class="price-card">
+                <p style="color: #8b949e;">السعر الحالي المباشر</p>
+                <div class="live-val">{current_price:.3f}</div>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        st.write("")
+        c1, c2 = st.columns(2)
+        c1.metric("أعلى سعر اليوم", f"{high_day:.3f}")
+        c2.metric("أدنى سعر اليوم", f"{low_day:.3f}")
+        
+        # حساب الزوايا بضغطة زر
+        st.write("---")
+        if st.button("🎯 استخراج التوصية والهدف"):
+            diff = high_day - low_day
+            buy_trigger = low_day + (diff * 0.225)
+            sell_trigger = high_day - (diff * 0.225)
+            
+            if current_price >= buy_trigger:
+                tp = current_price + (diff * 0.125)
+                st.success(f"🟢 إشارة شراء: المستهدف القادم {tp:.3f}")
+            elif current_price <= sell_trigger:
+                tp = current_price - (diff * 0.125)
+                st.error(f"🔴 إشارة بيع: المستهدف القادم {tp:.3f}")
+            else:
+                st.info("🔄 السعر في منطقة انتظار الزوايا")
+    else:
+        # رسالة في حال كان السوق مغلق (مثل الآن)
+        st.warning("⚠️ السوق معزّل حالياً. سيتم عرض البيانات فور افتتاح البورصة.")
+        st.info("ملاحظة: يمكنك تجربة الموقع يوم الاثنين لمشاهدة السعر يتحرك لحظياً.")
 
-# إضافة تنبيه بسيط للمستخدم
-st.sidebar.info("الموقع يحدّث السعر تلقائياً عند إعادة تحميل الصفحة أو الضغط على زر التحليل.")
+except Exception as e:
+    st.error("جاري إعادة الاتصال بمزود الأسعار العالمي...")
+
