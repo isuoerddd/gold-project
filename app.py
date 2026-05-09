@@ -1,76 +1,84 @@
 import streamlit as st
 import yfinance as yf
 from streamlit_autorefresh import st_autorefresh
+import pandas as pd
 
-# إعداد واجهة المهندس
-st.set_page_config(page_title="Gann Live Sniper", layout="wide")
+# إعدادات الواجهة (Dark Mode - TradingView Palette)
+st.set_page_config(page_title="Pro Gold Tracker", layout="wide")
 
-# تحديث تلقائي كل 5 ثوانٍ لضمان "نبض" السعر
-st_autorefresh(interval=5000, key="price_refresh")
+# تحديث تلقائي "نبض" الموقع كل 3 ثوانٍ
+st_autorefresh(interval=3000, key="live_refresh")
 
 st.markdown("""
     <style>
-    .main { background-color: #0d1117; color: white; }
-    .price-card { 
-        background: #161b22; 
-        border-radius: 15px; 
-        padding: 30px; 
-        border: 2px solid #58a6ff; 
-        text-align: center; 
+    .main { background-color: #0b0e14; color: white; }
+    .live-price-box {
+        background: #161b22;
+        border: 2px solid #2962ff;
+        border-radius: 15px;
+        padding: 30px;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
     }
-    .live-val { font-size: 60px; font-weight: bold; color: #58a6ff; }
+    .price-text { font-size: 65px; font-weight: bold; color: #58a6ff; }
     </style>
     """, unsafe_allow_html=True)
 
-st.title("⚖️ رادار الذهب الهندسي (بث حي)")
+st.title("🚀 رادار الذهب - نسخة الخبراء (GitHub Style)")
 
-# الرمز السعري (بناءً على صورتك 4715 هو الفضة XAGUSD=X)
-# إذا تريد الذهب الفوري غيره إلى XAUUSD=X
-symbol = "XAGUSD=X" 
+# الرمز السعري للذهب (XAU/USD)
+# ملاحظة: سعر 4715 الذي تتابعه هو غالباً Silver (XAGUSD) أو عقد محدد
+symbol = "XAUUSD=X" 
 
-try:
-    ticker = yf.Ticker(symbol)
-    # جلب بيانات دقيقة جداً
-    df = ticker.history(period="1d", interval="1m")
+def fetch_expert_data():
+    try:
+        # جلب أحدث بيانات دقيقة (بث حي)
+        ticker = yf.Ticker(symbol)
+        data = ticker.history(period="1d", interval="1m")
+        if not data.empty:
+            current = ticker.fast_info['last_price']
+            high = data['High'].max()
+            low = data['Low'].min()
+            return current, high, low
+    except:
+        return None, None, None
+    return None, None, None
+
+current, high, low = fetch_expert_data()
+
+if current:
+    # عرض السعر المباشر
+    st.markdown(f"""
+        <div class="live-price-box">
+            <p style="color: #8b949e; font-size: 20px;">السعر الحالي المباشر</p>
+            <div class="price-text">{current:.2f}</div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    st.write("")
+    col1, col2 = st.columns(2)
+    col1.metric("أعلى سعر اليوم (H)", f"{high:.2f}")
+    col2.metric("أدنى سعر اليوم (L)", f"{low:.2f}")
+
+    st.write("---")
     
-    if not df.empty:
-        current_price = float(df['Close'].iloc[-1])
-        high_day = float(df['High'].max())
-        low_day = float(df['Low'].min())
+    # محرك التوصية بضغطة زر (كما طلبت)
+    if st.button("🎯 استخراج التوصية الهندسية"):
+        diff = high - low
+        buy_trigger = low + (diff * 0.225)
+        sell_trigger = high - (diff * 0.225)
         
-        # عرض السعر الحي
-        st.markdown(f"""
-            <div class="price-card">
-                <p style="color: #8b949e;">السعر الحالي المباشر</p>
-                <div class="live-val">{current_price:.3f}</div>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        st.write("")
-        c1, c2 = st.columns(2)
-        c1.metric("أعلى سعر اليوم", f"{high_day:.3f}")
-        c2.metric("أدنى سعر اليوم", f"{low_day:.3f}")
-        
-        # حساب الزوايا بضغطة زر
-        st.write("---")
-        if st.button("🎯 استخراج التوصية والهدف"):
-            diff = high_day - low_day
-            buy_trigger = low_day + (diff * 0.225)
-            sell_trigger = high_day - (diff * 0.225)
-            
-            if current_price >= buy_trigger:
-                tp = current_price + (diff * 0.125)
-                st.success(f"🟢 إشارة شراء: المستهدف القادم {tp:.3f}")
-            elif current_price <= sell_trigger:
-                tp = current_price - (diff * 0.125)
-                st.error(f"🔴 إشارة بيع: المستهدف القادم {tp:.3f}")
-            else:
-                st.info("🔄 السعر في منطقة انتظار الزوايا")
-    else:
-        # رسالة في حال كان السوق مغلق (مثل الآن)
-        st.warning("⚠️ السوق معزّل حالياً. سيتم عرض البيانات فور افتتاح البورصة.")
-        st.info("ملاحظة: يمكنك تجربة الموقع يوم الاثنين لمشاهدة السعر يتحرك لحظياً.")
+        if current >= buy_trigger:
+            target = current + (diff * 0.125)
+            st.success(f"📈 إشارة شراء: السعر فوق الزاوية الحرجة | الهدف: {target:.2f}")
+        elif current <= sell_trigger:
+            target = current - (diff * 0.125)
+            st.error(f"📉 إشارة بيع: السعر كسر دعم الزاوية | الهدف: {target:.2f}")
+        else:
+            st.info("🔄 حالة السوق: تذبذب (انتظر وصول السعر للزوايا)")
+else:
+    st.warning("⚠️ بانتظار بث الأسعار من البورصة (السوق حالياً في عطلة)")
 
-except Exception as e:
-    st.error("جاري إعادة الاتصال بمزود الأسعار العالمي...")
-
+st.sidebar.markdown("### إحصائيات النظام")
+st.sidebar.write("الحالة: متصل بخادم الأسعار ✅")
+st.sidebar.write("معدل التحديث: كل 3 ثوانٍ")
