@@ -1,69 +1,72 @@
 import streamlit as st
-import yfinance as yf
-from streamlit_autorefresh import st_autorefresh
+import streamlit.components.v1 as components
 
-# إعداد واجهة المهندس
-st.set_page_config(page_title="Gann TV Radar", layout="wide")
-
-# تحديث تلقائي كل 10 ثوانٍ لضمان استقرار السيرفر
-st_autorefresh(interval=10000, key="gold_refresh")
+# إعدادات الواجهة الاحترافية
+st.set_page_config(page_title="Gann TV Sniper", layout="wide")
 
 st.markdown("""
     <style>
-    .main { background-color: #131722; color: #d1d4dc; }
-    .price-card { background: #1e222d; border-radius: 10px; padding: 25px; border: 1px solid #363c4e; text-align: center; }
-    .live-price { font-size: 55px; font-weight: bold; color: #2962ff; }
-    .status-msg { padding: 10px; border-radius: 5px; background: #2a2e39; color: #b2b5be; }
+    .main { background-color: #131722; color: white; }
+    .stNumberInput { border: 1px solid #2962ff !important; }
+    .card { padding: 20px; border-radius: 10px; background: #1e222d; border: 1px solid #363c4e; text-align: right; }
     </style>
     """, unsafe_allow_html=True)
 
-st.title("📊 رادار الذهب - TradingView Style")
+st.title("🎯 رادار الذهب - TradingView Sniper")
 
-# الرمز السعري للذهب (XAU/USD)
-symbol = "GC=F" # عقود الذهب هي الأكثر استقراراً في البيانات
+# --- الجزء الأول: شارت TradingView المباشر ---
+st.subheader("📈 نبض السوق المباشر (TradingView)")
+tradingview_widget = """
+<div class="tradingview-widget-container">
+  <div id="tradingview_12345"></div>
+  <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+  <script type="text/javascript">
+  new TradingView.widget({
+    "width": "100%",
+    "height": 400,
+    "symbol": "OANDA:XAUUSD",
+    "interval": "1",
+    "timezone": "Etc/UTC",
+    "theme": "dark",
+    "style": "1",
+    "locale": "ar",
+    "toolbar_bg": "#f1f3f6",
+    "enable_publishing": false,
+    "hide_top_toolbar": true,
+    "save_image": false,
+    "container_id": "tradingview_12345"
+  });
+  </script>
+</div>
+"""
+components.html(tradingview_widget, height=420)
 
-try:
-    # جلب البيانات مع معالجة الأخطاء
-    gold_data = yf.download(symbol, period="2d", interval="1m", progress=False)
+st.write("---")
+
+# --- الجزء الثاني: حاسبة زوايا جان ---
+st.subheader("🧮 حاسبة الأهداف الذكية")
+
+with st.container():
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        high = st.number_input("أعلى سعر اليوم (High)", value=2350.0, format="%.2f")
+    with col2:
+        low = st.number_input("أدنى سعر اليوم (Low)", value=2320.0, format="%.2f")
+    with col3:
+        current = st.number_input("السعر الحالي من الشارت", value=2335.0, format="%.2f")
+
+if st.button("تحليل الزوايا واستخراج الأهداف 🚀"):
+    diff = high - low
+    buy_trigger = low + (diff * 0.225)
+    sell_trigger = high - (diff * 0.225)
     
-    if not gold_data.empty:
-        # استخراج الأسعار بشكل آمن لتجنب TypeError
-        current_price = float(gold_data['Close'].iloc[-1])
-        high_day = float(gold_data['High'].max())
-        low_day = float(gold_data['Low'].min())
-        
-        # حساب زوايا جان (Logic)
-        diff = high_day - low_day
-        buy_trigger = low_day + (diff * 0.225)
-        sell_trigger = high_day - (diff * 0.225)
-        
-        # العرض الاحترافي
-        st.markdown(f"""
-            <div class="price-card">
-                <p style="color: #b2b5be;">GOLD / USD - LIVE FEED</p>
-                <div class="live-price">${current_price:.2f}</div>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        st.write("")
-        col1, col2 = st.columns(2)
-        col1.metric("أعلى سعر اليوم (H)", f"{high_day:.2f}")
-        col2.metric("أدنى سعر اليوم (L)", f"{low_day:.2f}")
-        
-        st.write("---")
-        # محرك التوصيات بناءً على السعر الحي
-        if current_price >= buy_trigger:
-            target = current_price + (diff * 0.125)
-            st.success(f"🟢 إشارة شراء: السعر فوق زاوية الانطلاق | المستهدف: {target:.2f}")
-        elif current_price <= sell_trigger:
-            target = current_price - (diff * 0.125)
-            st.error(f"🔴 إشارة بيع: السعر كسر مستويات الدعم | المستهدف: {target:.2f}")
-        else:
-            st.info("🔄 السعر حالياً في منطقة تذبذب (عرضي) - بانتظار اختراق الزوايا")
-            
+    st.write("")
+    
+    if current >= buy_trigger:
+        tp1 = current + (diff * 0.125)
+        st.success(f"🟢 إشارة شراء (BUY) | الهدف القادم: {tp1:.2f}")
+    elif current <= sell_trigger:
+        tp1 = current - (diff * 0.125)
+        st.error(f"🔴 إشارة بيع (SELL) | الهدف القادم: {tp1:.2f}")
     else:
-        st.warning("⚠️ السوق معزل حالياً أو جاري إعادة الاتصال بمزود الأسعار...")
-
-except Exception as e:
-    # عرض رسالة هادئة بدلاً من الكود الأحمر المزعج
-    st.markdown("<div class='status-msg'>🔄 جاري تحديث نبض السوق... تأكد من اتصال الإنترنت</div>", unsafe_allow_html=True)
+        st.info("🔄 السعر في منطقة انتظار (Wait Zone)")
