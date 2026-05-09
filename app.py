@@ -1,66 +1,69 @@
 import streamlit as st
 import yfinance as yf
+from pandas_datareader import data as pdr
+import time
 
-# إعدادات الصفحة
-st.set_page_config(page_title="Gann Auto-Sniper", layout="wide")
+# إعداد واجهة المستخدم
+st.set_page_config(page_title="Live Gann Sniper", layout="centered")
 
+# إضافة CSS لجعل الواجهة احترافية ومظلمة
 st.markdown("""
     <style>
-    .main { background-color: #0b0e14; color: #e0e0e0; }
-    .stMetric { background-color: #161b22; border-radius: 10px; padding: 15px; border: 1px solid #30363d; }
-    .card { padding: 20px; border-radius: 15px; background: #161b22; border: 1px solid #30363d; text-align: center; }
+    .main { background-color: #0d1117; color: white; }
+    .live-price { font-size: 60px; font-weight: bold; color: #58a6ff; text-align: center; }
+    .status-card { padding: 20px; border-radius: 15px; background: #161b22; border: 1px solid #30363d; text-align: center; }
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🚀 Gann Intelligence - النسخة الاحترافية")
+st.title("⚖️ رادار الذهب الهندسي (بث مباشر)")
 
-# قائمة الأزواج
-symbol_map = {
-    "الذهب (XAU/USD)": "GC=F",
-    "اليورو دولار (EUR/USD)": "EURUSD=X",
-    "الباوند دولار (GBP/USD)": "GBPUSD=X"
-}
-choice = st.selectbox("اختر الزوج:", list(symbol_map.keys()))
+# تحديد الرمز (Ticker) من الصور التي أرسلتها
+symbol = "GC=F" # هذا يعطيك سعر الذهب العالمي المباشر
 
-if st.button("تحديث وتحليل الزوايا ⚡"):
-    try:
-        # جلب البيانات
-        ticker = yf.Ticker(symbol_map[choice])
-        hist = ticker.history(period="2d")
-        
-        if len(hist) < 2:
-            st.error("عذراً، تعذر جلب بيانات كافية حالياً.")
-        else:
-            # استخراج الأرقام بدقة
-            high = float(hist['High'].iloc[-2]) # قمة البارحة
-            low = float(hist['Low'].iloc[-2])   # قاع البارحة
-            current = float(ticker.fast_info['last_price'])
-            
-            # عرض المقاييس الأساسية
-            c1, c2, c3 = st.columns(3)
-            c1.metric("السعر الحالي", f"{current:.2f}")
-            c2.metric("أعلى سعر (أمس)", f"{high:.2f}")
-            c3.metric("أدنى سعر (أمس)", f"{low:.2f}")
-            
-            # حساب زوايا جان (Logic)
+def get_live_data():
+    ticker = yf.Ticker(symbol)
+    # جلب بيانات آخر يومين لاستخراج الـ High والـ Low
+    df = ticker.history(period="2d", interval="1m")
+    if not df.empty:
+        current = ticker.fast_info['last_price']
+        high = df['High'].max()
+        low = df['Low'].min()
+        return current, high, low
+    return None, None, None
+
+# --- منطقة التحديث التلقائي ---
+# سنقوم بعمل حلقة Loop لتحديث السعر كل 2 ثانية
+placeholder = st.empty()
+
+while True:
+    current, high, low = get_live_data()
+    
+    with placeholder.container():
+        if current:
             diff = high - low
-            mid_point = low + (diff * 0.5)
-            buy_angle = low + (diff * 0.225)
-            sell_angle = high - (diff * 0.225)
+            mid = low + (diff * 0.5)
+            buy_zone = low + (diff * 0.225)
+            sell_zone = high - (diff * 0.225)
+            
+            st.markdown(f"<div class='live-price'>{current:.2f}</div>", unsafe_allow_html=True)
+            
+            col1, col2 = st.columns(2)
+            col1.metric("أعلى سعر اليوم", f"{high:.2f}")
+            col2.metric("أدنى سعر اليوم", f"{low:.2f}")
             
             st.write("---")
             
-            # محرك التوصيات
-            if current >= buy_angle and current < high:
-                tp1 = current + (diff * 0.125)
-                st.success(f"🟢 إشارة شراء (BUY) - الهدف الأول: {tp1:.2f}")
-            elif current <= sell_angle and current > low:
-                tp1 = current - (diff * 0.125)
-                st.error(f"🔴 إشارة بيع (SELL) - الهدف الأول: {tp1:.2f}")
+            # منطق اتخاذ القرار التلقائي
+            if current >= buy_zone:
+                target = current + (diff * 0.125)
+                st.success(f"✅ إشارة شراء (Live): المستهدف القادم {target:.2f}")
+            elif current <= sell_zone:
+                target = current - (diff * 0.125)
+                st.error(f"⚠️ إشارة بيع (Live): المستهدف القادم {target:.2f}")
             else:
-                st.warning("⚠️ منطقة تذبذب - انتظر اختراق الزوايا")
-                
-    except Exception as e:
-        st.error(f"حدث خطأ أثناء جلب البيانات: {e}")
-
-st.sidebar.write("خاص ببرمجة المهندس - 2026")
+                st.info("🔄 السعر في منطقة تذبذب.. بانتظار حركة الزوايا")
+        else:
+            st.warning("جاري الاتصال بمزود البيانات... تأكد من استقرار الإنترنت")
+            
+    # توقف لمدة ثانيتين قبل التحديث القادم
+    time.sleep(2)
