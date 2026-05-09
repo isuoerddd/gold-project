@@ -1,81 +1,53 @@
 import streamlit as st
-import pandas as pd
-import yfinance as yf
+import streamlit.components.v1 as components
 
-# إعدادات الواجهة الاحترافية
-st.set_page_config(page_title="Gold Prediction Radar", layout="wide")
+st.set_page_config(page_title="Pro Order Flow Sniper", layout="wide")
 
 st.markdown("""
     <style>
-    .main { background-color: #0d1117; color: white; }
-    .prediction-box { padding: 20px; border-radius: 15px; border: 2px solid #2962ff; background: #161b22; text-align: center; }
-    .trend-up { color: #089981; font-size: 25px; font-weight: bold; }
-    .trend-down { color: #f23645; font-size: 25px; font-weight: bold; }
+    .main { background-color: #0b0e14; color: white; }
+    .stTabs [data-baseweb="tab-list"] { gap: 10px; }
+    .stTabs [data-baseweb="tab"] { background-color: #161b22; border-radius: 5px; color: white; padding: 10px 20px; }
+    .pro-box { padding: 20px; border-radius: 10px; border: 1px solid #30363d; background: #161b22; text-align: center; }
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🛡️ نظام توقعات الذهب الاحترافي")
+st.title("🛡️ رادار السكالبينج وعمق السوق (Bookmap Style)")
 
-# --- لوحة التحكم (اختياراتك) ---
-st.sidebar.header("⚙️ إعدادات التوقع")
-timeframe = st.sidebar.selectbox("اختر الفريم (Timeframe):", ["1m", "5m", "15m", "1h", "4h", "1d"])
-symbol = "XAUUSD=X" # الذهب مقابل الدولار
+# إنشاء تبويبات (Tabs) للتنقل بين الأدوات
+tab1, tab2 = st.tabs(["📊 شاشة السيولة (Order Flow)", "🎯 حاسبة السكالب"])
 
-def get_market_sentiment(symbol, tf):
-    ticker = yf.Ticker(symbol)
-    # جلب بيانات بناءً على الفريم المختار
-    df = ticker.history(period="5d", interval=tf)
-    if not df.empty:
-        current_price = ticker.fast_info['last_price']
-        # تحليل بسيط للترند (مستوحى من خوارزميات GitHub)
-        sma_20 = df['Close'].rolling(window=20).mean().iloc[-1]
-        rsi = 50 # قيمة افتراضية للتبسيط
-        
-        high = df['High'].max()
-        low = df['Low'].min()
-        
-        return current_price, sma_20, high, low
-    return None, None, None, None
+with tab1:
+    st.subheader("بث تدفق الأوامر المباشر (Aggr Live)")
+    # دمج شاشة Aggr الشهيرة لعرض البوك ماب والسيولة
+    # هذا الرابط يجلب بيانات الذهب والعملات بنظام الفقاعات (Bubbles) والسيولة
+    aggr_url = "https://aggr.trade/" 
+    components.iframe(aggr_url, height=600, scrolling=True)
 
-current, sma, high, low = get_market_sentiment(symbol, timeframe)
-
-if current:
-    # عرض السعر من تريدنج فيو
-    st.markdown(f"""
-        <div class="prediction-box">
-            <h3 style="color:#8b949e;">السعر الحالي (XAU/USD) - فريم {timeframe}</h3>
-            <h1 style="font-size:60px; color:#58a6ff;">${current:.2f}</h1>
-        </div>
-    """, unsafe_allow_html=True)
-
-    st.write("---")
-    
-    # --- قسم التوقعات والسيطرة ---
-    col1, col2 = st.columns(2)
+with tab2:
+    st.subheader("تحليل العمق وتوصية السكالب")
+    col1, col2 = st.columns([2, 1])
     
     with col1:
-        st.subheader("📊 الترند العام والسيطرة")
-        if current > sma:
-            st.markdown("<p class='trend-up'>📈 الاتجاه: صاعد (Bullish)</p>", unsafe_allow_html=True)
-            st.write("المسيطر حالياً: **المشترون (Bulls)**")
-        else:
-            st.markdown("<p class='trend-down'>📉 الاتجاه: هابط (Bearish)</p>", unsafe_allow_html=True)
-            st.write("المسيطر حالياً: **البائعون (Sellers)**")
-
+        st.info("قم بمراقبة الفقاعات الكبيرة في الشاشة السابقة؛ الفقاعات الخضراء تعني دخول سيولة شراء قوية.")
+        high = st.number_input("أعلى سعر مسجل الآن (High)", value=2350.0)
+        low = st.number_input("أدنى سعر مسجل الآن (Low)", value=2340.0)
+        current = st.number_input("السعر الحالي", value=2345.0)
+        
     with col2:
-        st.subheader("🎯 التوقع والتوصية")
-        diff = high - low
-        if current > sma:
-            target = current + (diff * 0.125)
-            st.success(f"توقع: استمرار الصعود نحو {target:.2f}")
-        else:
-            target = current - (diff * 0.125)
-            st.error(f"توقع: استمرار الهبوط نحو {target:.2f}")
+        if st.button("🔥 تحليل سكالب سريع"):
+            diff = high - low
+            # معادلة السكالب السريع (زوايا جان الصغرى)
+            scalp_target = current + (diff * 0.0625) # هدف سكالب سريع
+            
+            if current > (low + (diff * 0.5)):
+                st.success(f"✅ سيولة شرائية مسيطرة\nالهدف: {scalp_target:.2f}")
+            else:
+                st.error(f"⚠️ سيولة بيعية مسيطرة\nالهدف: {current - (diff * 0.0625):.2f}")
 
-    # عرض مستويات جان الذكية
-    st.write("---")
-    st.info(f"تحليل الزوايا: القمة اليومية عند {high:.2f} والقاع عند {low:.2f}")
-
-else:
-    st.warning("🔄 جاري الاتصال بخادم التحليل... تأكد من استقرار الإنترنت")
-
+st.sidebar.markdown("""
+### 💡 كيف تستخدم الموقع؟
+1. **شاشة السيولة:** راقب "الفقاعات" الكبيرة، هي تمثل أوامر (Big Orders) الحيتان.
+2. **Bookmap:** إذا رأيت خطوطاً ملونة ثابتة، فهي "جدران سيولة" (Liquidity Walls).
+3. **التوصية:** ادخل شراء مع الفقاعات الخضراء وبيكرر (Aggressive Buying).
+""")
