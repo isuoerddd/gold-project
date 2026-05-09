@@ -2,59 +2,55 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 
-# كود احترافي مستوحى من أنظمة الـ Scalping على GitHub
-def get_pro_market_data(ticker_symbol):
-    try:
-        # جلب البيانات اللحظية (بث حي)
-        ticker = yf.Ticker(ticker_symbol)
-        # ميزة الخبراء: استخدام fast_info لجلب سعر اللحظة بدون تأخير
-        current_price = ticker.fast_info['last_price']
-        
-        # جلب بيانات اليوم لحساب القمة والقاع (High/Low)
-        df = ticker.history(period="1d", interval="1m")
-        if not df.empty:
-            daily_high = df['High'].max()
-            daily_low = df['Low'].min()
-            return current_price, daily_high, daily_low
-    except Exception as e:
-        return None, None, None
-    return None, None, None
+# إعدادات الواجهة المستوحاة من TradingView
+st.set_page_config(page_title="Expert Gann Radar", layout="wide")
 
-# واجهة المستخدم (User Interface)
-st.set_page_config(page_title="Pro Gann Radar", layout="wide")
-st.title("🛡️ رادار الذهب - نسخة الخبراء")
+# وظيفة الخبراء: جلب البيانات وتخزينها مؤقتاً لسرعة الاستجابة
+@st.cache_data(ttl=10) # تحديث التخزين كل 10 ثوانٍ
+def fetch_pro_data(symbol):
+    ticker = yf.Ticker(symbol)
+    df = ticker.history(period="1d", interval="1m")
+    if not df.empty:
+        return {
+            "current": ticker.fast_info['last_price'],
+            "high": df['High'].max(),
+            "low": df['Low'].min()
+        }
+    return None
 
-# الرمز السعري للذهب الفوري
-symbol = "XAUUSD=X"
+# واجهة الرادار
+st.title("🛡️ رادار الذهب - نسخة المهندسين")
 
-# تنفيذ الجلب
-price, h, l = get_pro_market_data(symbol)
+symbol = "XAUUSD=X" # رمز الذهب العالمي
+data = fetch_pro_data(symbol)
 
-if price:
-    # تنسيق العرض (Dashboard)
+if data:
+    # عرض السعر الحالي بشكل ضخم
     st.markdown(f"""
-        <div style="background-color:#161b22; padding:20px; border-radius:10px; border:2px solid #238636; text-align:center;">
-            <h2 style="color:#8b949e;">السعر المباشر الآن</h2>
-            <h1 style="color:#58a6ff; font-size:60px;">{price:.2f}</h1>
+        <div style="background:#1e222d; padding:30px; border-radius:15px; border-left:5px solid #2962ff; text-align:center;">
+            <h3 style="color:#d1d4dc; margin:0;">XAUUSD LIVE</h3>
+            <h1 style="color:#2962ff; font-size:70px; margin:0;">{data['current']:.2f}</h1>
         </div>
     """, unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
-    col1.metric("أعلى سعر اليوم", f"{h:.2f}")
-    col2.metric("أدنى سعر اليوم", f"{l:.2f}")
+    col1.metric("أعلى سعر (High)", f"{data['high']:.2f}")
+    col2.metric("أدنى سعر (Low)", f"{data['low']:.2f}")
 
-    # محرك التوصية (هذا الجزء مخصص لك بناءً على معادلة جان)
+    # زر التوصية الذكية
     st.write("---")
-    if st.button("🚀 استخراج التوصية الذكية"):
-        range_val = h - l
-        buy_point = l + (range_val * 0.225)
-        sell_point = h - (range_val * 0.225)
+    if st.button("🚀 استخراج تحليل الزوايا الآن"):
+        h, l, c = data['high'], data['low'], data['current']
+        diff = h - l
+        # معادلة جان المختصرة
+        buy_zone = l + (diff * 0.225)
+        sell_zone = h - (diff * 0.225)
         
-        if price >= buy_point:
-            st.success(f"📈 الإشارة: شراء (Buy) - الهدف: {price + (range_val * 0.125):.2f}")
-        elif price <= sell_point:
-            st.error(f"📉 الإشارة: بيع (Sell) - الهدف: {price - (range_val * 0.125):.2f}")
+        if c >= buy_zone:
+            st.success(f"📈 الإشارة: شراء (BUY) | المستهدف: {c + (diff * 0.125):.2f}")
+        elif c <= sell_zone:
+            st.error(f"📉 الإشارة: بيع (SELL) | المستهدف: {c - (diff * 0.125):.2f}")
         else:
-            st.info("🔄 حالة السوق: تذبذب - انتظر حركة السعر نحو الزوايا")
+            st.info("🔄 السعر في منطقة انتظار عرضية")
 else:
-    st.warning("⚠️ بانتظار اتصال السيرفر بالبورصة العالمية (السوق مغلق حالياً)")
+    st.warning("⚠️ جاري تحديث البيانات من خادم البورصة...")
