@@ -1,71 +1,97 @@
 import streamlit as st
+import yfinance as yf
+import pandas as pd
 
-st.set_page_config(page_title="Gann Precision Sniper", layout="centered")
+# إعدادات واجهة المستخدم الاحترافية
+st.set_page_config(page_title="Gann Auto-Sniper Pro", layout="wide")
 
-# تنسيق واجهة المستخدم
 st.markdown("""
     <style>
-    .main { background-color: #0d1117; color: white; }
-    .card { padding: 20px; border-radius: 15px; background: #161b22; border: 1px solid #30363d; text-align: right; direction: rtl; }
-    .buy-zone { border: 2px solid #39d353; padding: 10px; border-radius: 10px; background: rgba(57, 211, 83, 0.1); }
-    .sell-zone { border: 2px solid #f85149; padding: 10px; border-radius: 10px; background: rgba(248, 81, 73, 0.1); }
+    .main { background-color: #0b0e14; color: #e0e0e0; }
+    .stMetric { background-color: #161b22; border-radius: 10px; padding: 15px; border: 1px solid #30363d; }
+    .card { padding: 20px; border-radius: 15px; background: #161b22; border: 1px solid #30363d; text-align: center; }
+    .buy-zone { border: 2px solid #39d353; background: rgba(57, 211, 83, 0.05); }
+    .sell-zone { border: 2px solid #f85149; background: rgba(248, 81, 73, 0.05); }
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown("<h2 style='text-align: center;'>🎯 قناص زوايا جان الاحترافي</h2>", unsafe_allow_html=True)
+# دالة جلب البيانات الحية
+def get_market_data(ticker):
+    data = yf.download(ticker, period="2d", interval="1h")
+    # الـ High والـ Low لشمعة البارحة (أو آخر شمعة مكتملة)
+    daily_high = data['High'].max()
+    daily_low = data['Low'].min()
+    current_price = yf.Ticker(ticker).fast_info['last_price']
+    return daily_high, daily_low, current_price
 
-# المدخلات اليدوية
-with st.container():
-    st.markdown("<div class='card'>", unsafe_allow_html=True)
-    col1, col2 = st.columns(2)
-    with col1:
-        high = st.number_input("أعلى سعر لليوم (High)", value=0.0, format="%.2f")
-    with col2:
-        low = st.number_input("أدنى سعر لليوم (Low)", value=0.0, format="%.2f")
-    current = st.number_input("السعر الحالي (Current)", value=0.0, format="%.2f")
-    st.markdown("</div>", unsafe_allow_html=True)
+# --- الواجهة الرئيسية ---
+st.markdown("<h1 style='text-align: center; color: #58a6ff;'>🚀 Gann Auto-Sniper Intelligence</h1>", unsafe_allow_html=True)
+st.write("---")
 
-if st.button("تحليل الزوايا الآن 🚀"):
-    if high > low and current > 0:
-        diff = high - low
+# اختيار الزوج المراد تحليله
+symbol_map = {
+    "الذهب (XAU/USD)": "GC=F",
+    "اليورو دولار (EUR/USD)": "EURUSD=X",
+    "الباوند دولار (GBP/USD)": "GBPUSD=X"
+}
+choice = st.selectbox("اختر الزوج لتحليله فوراً:", list(symbol_map.keys()))
+
+if st.button("تحديث النبض السعري والتحليل ⚡"):
+    with st.spinner('جاري سحب البيانات الحية من البورصة...'):
+        high, low, current = get_market_data(symbol_map[choice])
         
-        # مستويات جان الرئيسية (Angles)
-        level_22 = low + (diff * 0.225) # زاوية 22.5 صاعدة
-        level_77 = high - (diff * 0.225) # زاوية 22.5 هابطة
-        mid_point = low + (diff * 0.5)   # مستوى الـ 50%
+        diff = high - low
+        # مستويات جان (Angles)
+        level_22_buy = low + (diff * 0.225)
+        level_22_sell = high - (diff * 0.225)
+        
+        # عرض البيانات الأساسية
+        c1, c2, c3 = st.columns(3)
+        c1.metric("السعر الحالي", f"{current:.2f}")
+        c2.metric("أعلى سعر (High)", f"{high:.2f}")
+        c3.metric("أدنى سعر (Low)", f"{low:.2f}")
         
         st.write("---")
 
-        # --- المنطق الجديد للدقة العالية ---
-        # إذا كان السعر فوق مستوى الـ 22.5% الصاعد -> شراء
-        if current >= level_22 and current < high:
+        # --- محرك التوصيات الذكي ---
+        if current >= level_22_buy and current < high:
+            # حالة الشراء
             tp1 = current + (diff * 0.125)
-            sl = current - (diff * 0.05)
+            tp2 = current + (diff * 0.250)
+            sl = current - (diff * 0.08)
+            
             st.markdown(f"""
-            <div class="buy-zone">
-                <h3 style="color: #39d353; text-align:center;">🟢 توصية شراء (BUY)</h3>
-                <p style="text-align:center;">السعر بدأ باختراق زوايا الصعود</p>
-                <hr>
-                <p>الهدف القادم: <b>{tp1:.2f}</b></p>
-                <p>وقف الخسارة: <b>{sl:.2f}</b></p>
+            <div class="card buy-zone">
+                <h2 style="color: #39d353;">🟢 إشارة شراء (BUY) مؤكدة</h2>
+                <p>السعر دخل منطقة القوة بناءً على زاوية 22.5°</p>
+                <div style="display: flex; justify-content: space-around;">
+                    <div><p>الهدف الأول</p><h3>{tp1:.2f}</h3></div>
+                    <div><p>الهدف الثاني</p><h3>{tp2:.2f}</h3></div>
+                    <div><p>وقف الخسارة</p><h3 style="color:#f85149">{sl:.2f}</h3></div>
+                </div>
             </div>
             """, unsafe_allow_html=True)
 
-        # إذا كان السعر كسر مستوى الـ 22.5% الهابط من الأعلى -> بيع
-        elif current <= level_77 and current > low:
+        elif current <= level_22_sell and current > low:
+            # حالة البيع
             tp1 = current - (diff * 0.125)
-            sl = current + (diff * 0.05)
+            tp2 = current - (range_val * 0.250)
+            sl = current + (diff * 0.08)
+            
             st.markdown(f"""
-            <div class="sell-zone">
-                <h3 style="color: #f85149; text-align:center;">🔴 توصية بيع (SELL)</h3>
-                <p style="text-align:center;">السعر كسر زوايا الدعم العلوي</p>
-                <hr>
-                <p>الهدف القادم: <b>{tp1:.2f}</b></p>
-                <p>وقف الخسارة: <b>{sl:.2f}</b></p>
+            <div class="card sell-zone">
+                <h2 style="color: #f85149;">🔴 إشارة بيع (SELL) مؤكدة</h2>
+                <p>السعر كسر زوايا الدعم العلوي وبدأ الهبوط</p>
+                <div style="display: flex; justify-content: space-around;">
+                    <div><p>الهدف الأول</p><h3>{tp1:.2f}</h3></div>
+                    <div><p>الهدف الثاني</p><h3>{tp2:.2f}</h3></div>
+                    <div><p>وقف الخسارة</p><h3 style="color:#39d353">{sl:.2f}</h3></div>
+                </div>
             </div>
             """, unsafe_allow_html=True)
-            
         else:
-            st.info("السعر في منطقة تذبذب (Wait) - بانتظار اختراق الزوايا")
-    else:
-        st.error("تأكد من إدخال الـ High والـ Low بشكل صحيح.")
+            st.warning("⚠️ السعر حالياً في منطقة تذبذب (Wait Zone). بانتظار الخروج من زوايا جان الجانبية.")
+
+st.sidebar.markdown("### 🛠️ إعدادات المهندس")
+st.sidebar.info("هذا الموقع يسحب البيانات من ياهو فاينانس مباشرة. التحديث يتم لحظياً عند الضغط على الزر.")
+st.sidebar.write("تذكر: إدارة المخاطر أهم من التوصية نفسها.")
